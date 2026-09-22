@@ -1,0 +1,396 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Assinatura da troca — Vegas Vigilância</title>
+<link rel="icon" href="assets/logovegas.png">
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@600;800&family=Rajdhani:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --preto:#0A0A0A; --grafite:#1E1E1E; --grafite2:#2A2A2A;
+  --cinza:#8A8A8A; --prata:#C0C0C0; --prata-claro:#E8E8E8;
+  --ok:#3ECF8E; --erro:#E5484D; --alerta:#F5A524;
+  --borda:rgba(192,192,192,.18);
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+body{margin:0;background:var(--preto);color:var(--prata-claro);
+  font-family:'Rajdhani',system-ui,sans-serif;font-size:17px;line-height:1.45}
+body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:0;
+  background:
+    radial-gradient(900px 500px at 50% -10%,rgba(192,192,192,.10),transparent 70%),
+    repeating-linear-gradient(0deg,rgba(192,192,192,.035) 0 1px,transparent 1px 44px),
+    repeating-linear-gradient(90deg,rgba(192,192,192,.035) 0 1px,transparent 1px 44px);}
+.wrap{position:relative;z-index:1;max-width:680px;margin:0 auto;padding:22px 16px 60px}
+
+header{text-align:center;padding:14px 0 20px}
+header img{height:68px;filter:drop-shadow(0 0 14px rgba(192,192,192,.25))}
+h1{font-family:'Orbitron',sans-serif;font-weight:800;font-size:20px;letter-spacing:.14em;
+  margin:14px 0 4px;text-transform:uppercase;
+  background:linear-gradient(180deg,#fff,var(--prata) 60%,var(--cinza));
+  -webkit-background-clip:text;background-clip:text;color:transparent}
+.sub{color:var(--cinza);font-size:13px;letter-spacing:.2em;text-transform:uppercase}
+
+.card{background:linear-gradient(180deg,rgba(42,42,42,.55),rgba(30,30,30,.55));
+  border:1px solid var(--borda);border-radius:16px;padding:18px 16px;margin-bottom:16px;
+  backdrop-filter:blur(9px)}
+.card h2{font-family:'Orbitron',sans-serif;font-size:13px;letter-spacing:.16em;text-transform:uppercase;
+  color:var(--prata);margin:0 0 14px}
+
+.proto{font-family:'Orbitron',sans-serif;font-size:26px;letter-spacing:.08em;color:#fff;text-align:center;margin:6px 0 2px}
+
+.rota{display:flex;align-items:center;gap:10px;flex-wrap:wrap;font-size:17px;margin-bottom:14px}
+.rota .de,.rota .para{border:1px solid var(--borda);border-radius:9px;padding:7px 12px;background:rgba(0,0,0,.35)}
+.rota .para{border-color:rgba(192,192,192,.4);color:#fff}
+.rota .seta{color:var(--prata);font-family:'Orbitron',sans-serif}
+
+.grade{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px}
+.dado{font-size:16px}
+.dado b{display:block;font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--cinza);
+  margin-bottom:2px;font-weight:600}
+.motivo{margin-top:14px;padding:11px 13px;border-left:2px solid var(--prata);background:rgba(0,0,0,.35);
+  border-radius:0 9px 9px 0;font-size:16px}
+
+.assin-sol{margin-top:16px;text-align:center}
+.assin-sol img{width:100%;max-width:240px;height:80px;object-fit:contain;background:#fff;
+  border-radius:8px;border:1px solid var(--borda)}
+.assin-sol span{display:block;font-size:11px;letter-spacing:.12em;text-transform:uppercase;
+  color:var(--cinza);margin-top:6px}
+
+label{display:block;font-size:13px;letter-spacing:.08em;text-transform:uppercase;
+  color:var(--cinza);margin:0 0 6px;font-weight:600}
+input,textarea{width:100%;background:#141414;color:var(--prata-claro);
+  border:1px solid var(--borda);border-radius:10px;padding:12px 13px;font-family:inherit;font-size:16px;
+  outline:none;transition:border-color .15s,box-shadow .15s}
+input:focus,textarea:focus{border-color:var(--prata);box-shadow:0 0 0 3px rgba(192,192,192,.12)}
+textarea{min-height:90px;resize:vertical}
+.campo{margin-bottom:14px}
+.dica{font-size:13px;color:var(--cinza);margin-top:5px;text-transform:none;letter-spacing:0}
+.obrig{color:var(--erro)}
+
+.sigbox{border:1px solid var(--borda);border-radius:12px;background:#0f0f0f;overflow:hidden}
+.sigbox canvas{display:block;width:100%;height:180px;touch-action:none;cursor:crosshair}
+.sigbar{display:flex;justify-content:space-between;align-items:center;padding:8px 12px;
+  border-top:1px solid var(--borda);background:rgba(0,0,0,.5)}
+.sigbar span{font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--cinza)}
+.limpar{background:none;border:1px solid var(--borda);color:var(--prata);border-radius:8px;
+  padding:6px 12px;font-family:inherit;font-size:13px;cursor:pointer;letter-spacing:.08em;text-transform:uppercase}
+
+.check{display:flex;gap:11px;align-items:flex-start;font-size:15px;color:var(--prata);
+  text-transform:none;letter-spacing:0;line-height:1.4}
+.check input{width:auto;flex:0 0 auto;margin-top:3px;accent-color:var(--ok)}
+
+.enviar{width:100%;padding:17px;border:none;border-radius:12px;cursor:pointer;
+  font-family:'Orbitron',sans-serif;font-size:14px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;
+  background:linear-gradient(180deg,#6ee7b7,var(--ok));color:#052e1a;
+  box-shadow:0 8px 26px rgba(62,207,142,.18);transition:.18s}
+.enviar:hover{transform:translateY(-1px)}
+.enviar:disabled{opacity:.5;cursor:not-allowed;transform:none}
+.recusar{width:100%;margin-top:10px;padding:14px;border-radius:12px;cursor:pointer;
+  background:none;border:1px solid rgba(229,72,77,.45);color:#FF9A9D;
+  font-family:inherit;font-size:15px;font-weight:600;letter-spacing:.06em}
+
+.msg{margin-top:12px;padding:12px 14px;border-radius:10px;font-size:15px;display:none}
+.msg.e{display:block;background:rgba(229,72,77,.1);border:1px solid rgba(229,72,77,.4);color:#FF9A9D}
+
+.estado{text-align:center;padding:40px 10px}
+.estado .ico{font-size:50px}
+.estado h2{font-family:'Orbitron',sans-serif;letter-spacing:.12em;margin:10px 0 6px;font-size:18px}
+.estado p{color:var(--cinza);max-width:420px;margin:8px auto}
+.btn2{display:block;padding:14px;border-radius:11px;border:1px solid var(--borda);background:rgba(0,0,0,.4);
+  color:var(--prata-claro);font-family:inherit;font-size:15px;font-weight:600;letter-spacing:.08em;
+  text-transform:uppercase;cursor:pointer;text-decoration:none;margin-top:10px;width:100%}
+.btn2.destaque{background:linear-gradient(180deg,#6ee7b7,var(--ok));color:#052e1a;border:none}
+
+.oculto{display:none}
+footer{text-align:center;color:#5a5a5a;font-size:12px;letter-spacing:.16em;
+  text-transform:uppercase;padding-top:26px}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header>
+  <img src="assets/logovegas.png" alt="Vegas Vigilância e Segurança">
+  <h1>Assinatura da troca</h1>
+  <div class="sub">Vegas Vigilância e Segurança</div>
+</header>
+
+<!-- carregando -->
+<div id="carregando" class="estado">
+  <div class="sub">Carregando a solicitação…</div>
+</div>
+
+<!-- erro de link -->
+<div id="invalido" class="estado oculto">
+  <div class="ico">⚠️</div>
+  <h2>Link inválido</h2>
+  <p id="invalido-txt">Este link não corresponde a nenhuma solicitação. Peça ao colega que gerou o pedido para enviar o link de novo.</p>
+</div>
+
+<!-- assinatura -->
+<div id="conteudo" class="oculto">
+
+  <div class="card">
+    <div class="sub" style="text-align:center">Protocolo</div>
+    <div class="proto" id="c-proto">TRC-0000</div>
+    <div class="dica" style="text-align:center" id="c-registro"></div>
+  </div>
+
+  <div class="card">
+    <h2>O que está sendo pedido</h2>
+    <div class="rota">
+      <span class="de" id="c-de">—</span><span class="seta">→</span><span class="para" id="c-para">—</span>
+    </div>
+    <div class="grade" id="c-grade"></div>
+    <div class="motivo" id="c-motivo"></div>
+    <div class="assin-sol" id="c-assin-sol"></div>
+  </div>
+
+  <div class="card">
+    <h2>Confirme que é você</h2>
+    <div class="campo">
+      <label>Seu CPF <span class="obrig">*</span></label>
+      <input id="cpf" inputmode="numeric" maxlength="14" placeholder="000.000.000-00">
+      <div class="dica">CPF cadastrado nesta solicitação: <b id="c-cpfmask">—</b></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>Sua assinatura</h2>
+    <div class="sigbox">
+      <canvas id="sig"></canvas>
+      <div class="sigbar"><span id="nome-sig">Colega</span><button type="button" class="limpar" id="limpar">Limpar</button></div>
+    </div>
+    <div class="dica">Assine com o dedo (no celular) ou com o mouse.</div>
+    <div class="campo" style="margin-top:16px">
+      <label class="check"><input type="checkbox" id="aceite">
+        Confirmo que combinei esta troca, que estou de acordo com o que está descrito acima e que a
+        troca só passa a valer após a aprovação da supervisão.</label>
+    </div>
+  </div>
+
+  <button class="enviar" id="btn">Assinar e confirmar a troca</button>
+  <button class="recusar" id="btnRecusar">Não concordo com esta troca</button>
+  <div class="msg" id="msg"></div>
+
+  <!-- recusa -->
+  <div class="card oculto" id="box-recusa" style="margin-top:16px;border-color:rgba(229,72,77,.4)">
+    <h2 style="color:#FF9A9D">Recusar a troca</h2>
+    <div class="campo">
+      <label>Motivo da recusa <span class="obrig">*</span></label>
+      <textarea id="motivoRecusa" maxlength="400" placeholder="Explique por que não pode assumir a troca."></textarea>
+      <div class="dica">Mínimo de 10 caracteres. O solicitante e a supervisão veem esta resposta.</div>
+    </div>
+    <button class="recusar" id="btnConfirmaRecusa" style="margin-top:0">Confirmar recusa</button>
+    <button class="btn2" id="btnVoltar">Voltar</button>
+  </div>
+</div>
+
+<!-- já resolvido / sucesso -->
+<div id="final" class="estado oculto">
+  <div class="ico" id="f-ico">✓</div>
+  <h2 id="f-titulo">Troca assinada</h2>
+  <p id="f-texto"></p>
+  <div class="proto" id="f-proto" style="font-size:22px"></div>
+  <div style="max-width:420px;margin:18px auto 0">
+    <a class="btn2 destaque oculto" id="f-doc" target="_blank" rel="noopener">Abrir documento assinado</a>
+    <a class="btn2 oculto" id="f-whats" target="_blank" rel="noopener">Avisar a supervisão no WhatsApp</a>
+  </div>
+</div>
+
+<footer>Vegas Vigilância e Segurança · Uso interno</footer>
+</div>
+
+<script>
+const API_URL = 'https://script.google.com/macros/s/AKfycbxOP3VM3VUCXR-kFNJcwFrbFApDirg8oTYZn7uul-zTswrAnnAzB_sYUeL-_dYnSHHE/exec';
+const $ = id => document.getElementById(id);
+const TOKEN = new URLSearchParams(location.search).get('t') || '';
+let DADOS = null;
+
+function mostrar(id){ ['carregando','invalido','conteudo','final'].forEach(x=>$(x).classList.toggle('oculto', x!==id)); }
+function esc(s){ return String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
+function br(iso){ if(!iso) return '—'; if(iso.indexOf('/')>0) return iso; const p=String(iso).split('-'); return p.length===3?`${p[2]}/${p[1]}/${p[0]}`:iso; }
+function thumb(url){ const m=String(url||'').match(/[-\w]{25,}/); return m?`https://drive.google.com/thumbnail?id=${m[0]}&sz=w600`:''; }
+function erro(t){ const m=$('msg'); m.className='msg e'; m.textContent=t; m.scrollIntoView({behavior:'smooth',block:'center'}); }
+
+// ── carrega a solicitação
+(async function carregar(){
+  if(!TOKEN){ mostrar('invalido'); return; }
+  try{
+    const r = await fetch(`${API_URL}?action=consulta&token=${encodeURIComponent(TOKEN)}`);
+    const j = await r.json();
+    if(!j.ok){ $('invalido-txt').textContent = j.erro || 'Link inválido.'; mostrar('invalido'); return; }
+    DADOS = j;
+
+    if(j.status !== 'Aguardando colega'){ telaFinal(j); return; }
+    preencher(j);
+    mostrar('conteudo');
+    pad.reset();
+  }catch(e){
+    $('invalido-txt').textContent = 'Falha de conexão. Verifique a internet e abra o link de novo.';
+    mostrar('invalido');
+  }
+})();
+
+function rotaDe(d){
+  if(d.tipoTroca==='Dia por dia')     return [br(d.dataOrigem), br(d.dataDestino)];
+  if(d.tipoTroca==='Turno por turno') return [d.turnoAtual||'—', d.turnoDestino||'—'];
+  return [`${d.postoAtual||'—'} (${d.cidadeAtual||''})`, `${d.postoDestino||'—'} (${d.cidadeDestino||''})`];
+}
+
+function preencher(d){
+  $('c-proto').textContent = d.protocolo;
+  $('c-registro').textContent = 'Aberta em ' + d.registro;
+  const [de,para] = rotaDe(d);
+  $('c-de').textContent = de; $('c-para').textContent = para;
+  const per = d.modalidade==='Temporária' && d.periodoInicio ? `${br(d.periodoInicio)} a ${br(d.periodoFim)}` : 'Definitiva';
+  $('c-grade').innerHTML = [
+    ['Quem pediu', d.nome],
+    ['Cargo', d.funcao||'—'],
+    ['Posto e turno dele(a)', `${d.postoAtual} — ${d.turnoAtual}`],
+    ['Tipo de troca', d.tipoTroca],
+    ['Vale por', d.modalidade==='Temporária' ? per : 'Definitiva'],
+    ['Você, no cadastro', `${d.colegaNome} — ${d.colegaPosto} / ${d.colegaCidade}`],
+    ['Contato dele(a)', d.telefone||'—']
+  ].map(([k,v])=>`<div class="dado"><b>${k}</b>${esc(v)}</div>`).join('');
+  $('c-motivo').innerHTML = `<b style="color:var(--prata)">Motivo:</b> ${esc(d.motivo)}`;
+  $('c-cpfmask').textContent = d.colegaCpfMascarado || '—';
+  $('nome-sig').textContent = d.colegaNome || 'Colega';
+  const t = thumb(d.assinSolicitante);
+  $('c-assin-sol').innerHTML = t
+    ? `<img src="${t}" alt="assinatura do solicitante"><span>Assinatura de ${esc(d.nome)}</span>` : '';
+}
+
+function telaFinal(d, extra){
+  extra = extra || {};
+  const doc = extra.documento || d.documento || '';
+  const st = extra.status || d.status;
+  $('f-proto').textContent = d.protocolo;
+  if(st === 'Recusada pelo colega'){
+    $('f-ico').textContent = '✕';
+    $('f-titulo').textContent = 'Troca recusada';
+    $('f-texto').textContent = 'Você recusou esta troca. O solicitante e a supervisão foram informados.' +
+      (d.motivoRecusaColega ? ' Motivo registrado: ' + d.motivoRecusaColega : '');
+  } else if(st === 'Aprovada' || st === 'Recusada'){
+    $('f-ico').textContent = st==='Aprovada' ? '✓' : '✕';
+    $('f-titulo').textContent = 'Solicitação ' + st.toLowerCase();
+    $('f-texto').textContent = 'A supervisão já decidiu esta solicitação. O documento assinado está disponível abaixo.';
+  } else {
+    $('f-ico').textContent = '✓';
+    $('f-titulo').textContent = 'Assinaturas concluídas';
+    $('f-texto').textContent = 'A solicitação foi para a supervisão de postos com as duas assinaturas. ' +
+      'A troca só vale depois da aprovação dela.';
+  }
+  if(doc){ $('f-doc').href = doc; $('f-doc').classList.remove('oculto'); }
+  if(extra.whatsapp){ $('f-whats').href = extra.whatsapp; $('f-whats').classList.remove('oculto'); }
+  mostrar('final');
+  window.scrollTo({top:0,behavior:'smooth'});
+}
+
+// ── máscara e validação de CPF
+$('cpf').addEventListener('input',()=>{
+  let v = $('cpf').value.replace(/\D/g,'').slice(0,11);
+  v = v.replace(/(\d{3})(\d)/,'$1.$2').replace(/(\d{3})\.(\d{3})(\d)/,'$1.$2.$3')
+       .replace(/(\d{3})\.(\d{3})\.(\d{3})(\d)/,'$1.$2.$3-$4');
+  $('cpf').value = v;
+});
+function cpfValido(str){
+  const c = String(str||'').replace(/\D/g,'');
+  if(c.length!==11 || /^(\d)\1{10}$/.test(c)) return false;
+  for(let t=9;t<11;t++){
+    let s=0; for(let i=0;i<t;i++) s+=parseInt(c[i],10)*((t+1)-i);
+    let d=(s*10)%11; if(d===10) d=0;
+    if(d!==parseInt(c[t],10)) return false;
+  }
+  return true;
+}
+
+// ── assinatura
+function padAssinatura(id){
+  const c = $(id), ctx = c.getContext('2d');
+  let desenhando=false, vazio=true;
+  function resize(){
+    const r = c.getBoundingClientRect(), dpr = window.devicePixelRatio||1;
+    if(!r.width) return;
+    const img = vazio?null:c.toDataURL();
+    c.width = r.width*dpr; c.height = r.height*dpr;
+    ctx.setTransform(dpr,0,0,dpr,0,0); ctx.lineWidth=2.4; ctx.lineCap='round'; ctx.lineJoin='round';
+    ctx.strokeStyle='#E8E8E8';
+    if(img){ const im=new Image(); im.onload=()=>ctx.drawImage(im,0,0,r.width,r.height); im.src=img; }
+  }
+  const pos = e => { const r=c.getBoundingClientRect(); return {x:e.clientX-r.left, y:e.clientY-r.top}; };
+  c.addEventListener('pointerdown',e=>{c.setPointerCapture(e.pointerId);desenhando=true;vazio=false;
+    const p=pos(e);ctx.beginPath();ctx.moveTo(p.x,p.y);});
+  c.addEventListener('pointermove',e=>{if(!desenhando)return;const p=pos(e);ctx.lineTo(p.x,p.y);ctx.stroke();});
+  c.addEventListener('pointerup',()=>desenhando=false);
+  c.addEventListener('pointerleave',()=>desenhando=false);
+  window.addEventListener('resize',resize);
+  return {
+    reset:resize,
+    vazio:()=>vazio,
+    limpar:()=>{ctx.clearRect(0,0,c.width,c.height);vazio=true;},
+    dados:()=>{
+      const t=document.createElement('canvas'); t.width=c.width; t.height=c.height;
+      const g=t.getContext('2d'); g.fillStyle='#FFFFFF'; g.fillRect(0,0,t.width,t.height);
+      g.drawImage(c,0,0);
+      const d=g.getImageData(0,0,t.width,t.height), px=d.data;
+      for(let i=0;i<px.length;i+=4){ if(px[i]>150&&px[i+1]>150&&px[i+2]>150&&px[i+3]===255&&
+        !(px[i]===255&&px[i+1]===255&&px[i+2]===255)){px[i]=20;px[i+1]=20;px[i+2]=20;} }
+      g.putImageData(d,0,0);
+      return t.toDataURL('image/png');
+    }
+  };
+}
+const pad = padAssinatura('sig');
+$('limpar').addEventListener('click',()=>pad.limpar());
+
+// ── assinar
+$('btn').addEventListener('click', async ()=>{
+  $('msg').className='msg';
+  const cpf = $('cpf').value.trim();
+  if(!cpfValido(cpf)) return erro('Digite o seu CPF completo para confirmar sua identidade.');
+  if(pad.vazio()) return erro('Falta a sua assinatura no campo acima.');
+  if(!$('aceite').checked) return erro('Marque a declaração de concordância.');
+
+  const b=$('btn'); b.disabled=true; b.textContent='Registrando assinatura...';
+  try{
+    const r = await fetch(API_URL,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},
+      body:JSON.stringify({action:'assinarColega', token:TOKEN, cpfConfirma:cpf,
+        assinColega:pad.dados(), aceite:true})});
+    const j = await r.json();
+    if(!j.ok){ b.disabled=false; b.textContent='Assinar e confirmar a troca'; return erro(j.erro||'Não foi possível registrar.'); }
+    telaFinal(DADOS, j);
+  }catch(e){
+    b.disabled=false; b.textContent='Assinar e confirmar a troca';
+    erro('Falha de conexão. Verifique a internet e tente de novo.');
+  }
+});
+
+// ── recusar
+$('btnRecusar').addEventListener('click',()=>{
+  $('box-recusa').classList.remove('oculto');
+  $('box-recusa').scrollIntoView({behavior:'smooth',block:'center'});
+});
+$('btnVoltar').addEventListener('click',()=>$('box-recusa').classList.add('oculto'));
+$('btnConfirmaRecusa').addEventListener('click', async ()=>{
+  $('msg').className='msg';
+  const cpf = $('cpf').value.trim(), motivo = $('motivoRecusa').value.trim();
+  if(!cpfValido(cpf)) return erro('Digite o seu CPF no campo "Confirme que é você" para recusar.');
+  if(motivo.length<10) return erro('Escreva o motivo da recusa (mínimo 10 caracteres).');
+  const b=$('btnConfirmaRecusa'); b.disabled=true; b.textContent='Registrando...';
+  try{
+    const r = await fetch(API_URL,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},
+      body:JSON.stringify({action:'recusarColega', token:TOKEN, cpfConfirma:cpf, motivo:motivo})});
+    const j = await r.json();
+    if(!j.ok){ b.disabled=false; b.textContent='Confirmar recusa'; return erro(j.erro||'Não foi possível registrar.'); }
+    DADOS.motivoRecusaColega = motivo;
+    telaFinal(DADOS, j);
+  }catch(e){
+    b.disabled=false; b.textContent='Confirmar recusa';
+    erro('Falha de conexão. Tente de novo.');
+  }
+});
+</script>
+</body>
+</html>

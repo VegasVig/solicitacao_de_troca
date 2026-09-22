@@ -1,0 +1,591 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Troca de Horário e Posto — Vegas Vigilância</title>
+<link rel="icon" href="assets/logovegas.png">
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@600;800&family=Rajdhani:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --preto:#0A0A0A; --grafite:#1E1E1E; --grafite2:#2A2A2A;
+  --cinza:#8A8A8A; --prata:#C0C0C0; --prata-claro:#E8E8E8;
+  --ok:#3ECF8E; --erro:#E5484D; --alerta:#F5A524;
+  --borda:rgba(192,192,192,.18);
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+body{margin:0;background:var(--preto);color:var(--prata-claro);
+  font-family:'Rajdhani',system-ui,sans-serif;font-size:17px;line-height:1.45}
+body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:0;
+  background:
+    radial-gradient(900px 500px at 50% -10%,rgba(192,192,192,.10),transparent 70%),
+    repeating-linear-gradient(0deg,rgba(192,192,192,.035) 0 1px,transparent 1px 44px),
+    repeating-linear-gradient(90deg,rgba(192,192,192,.035) 0 1px,transparent 1px 44px);}
+.wrap{position:relative;z-index:1;max-width:760px;margin:0 auto;padding:22px 16px 60px}
+
+header{text-align:center;padding:14px 0 22px}
+header img{height:74px;filter:drop-shadow(0 0 14px rgba(192,192,192,.25))}
+h1{font-family:'Orbitron',sans-serif;font-weight:800;font-size:22px;letter-spacing:.14em;
+  margin:14px 0 4px;text-transform:uppercase;
+  background:linear-gradient(180deg,#fff,var(--prata) 60%,var(--cinza));
+  -webkit-background-clip:text;background-clip:text;color:transparent}
+.sub{color:var(--cinza);font-size:14px;letter-spacing:.22em;text-transform:uppercase}
+
+.painel-link{position:fixed;top:14px;right:14px;z-index:20;display:inline-flex;align-items:center;gap:7px;
+  padding:9px 14px;border:1px solid var(--borda);border-radius:99px;background:rgba(10,10,10,.85);
+  backdrop-filter:blur(8px);color:var(--prata);text-decoration:none;font-size:12px;font-weight:600;
+  letter-spacing:.14em;text-transform:uppercase;transition:.15s}
+.painel-link:hover{border-color:var(--prata);color:#fff}
+.painel-link:focus-visible{outline:2px solid var(--prata);outline-offset:2px}
+@media print{.painel-link{display:none}}
+
+.aviso{border:1px solid rgba(245,165,36,.35);background:rgba(245,165,36,.07);
+  border-radius:12px;padding:13px 15px;font-size:15px;color:#F7D08A;margin-bottom:20px}
+.aviso b{color:#FFD79A}
+
+.card{background:linear-gradient(180deg,rgba(42,42,42,.55),rgba(30,30,30,.55));
+  border:1px solid var(--borda);border-radius:16px;padding:18px 16px;margin-bottom:16px;
+  backdrop-filter:blur(9px)}
+.card h2{font-family:'Orbitron',sans-serif;font-size:13px;letter-spacing:.16em;text-transform:uppercase;
+  color:var(--prata);margin:0 0 14px;display:flex;align-items:center;gap:10px}
+.card h2 .n{width:26px;height:26px;flex:0 0 26px;border:1px solid var(--borda);border-radius:8px;
+  display:grid;place-items:center;font-size:12px;color:var(--prata-claro);background:rgba(0,0,0,.4)}
+
+label{display:block;font-size:13px;letter-spacing:.08em;text-transform:uppercase;
+  color:var(--cinza);margin:0 0 6px;font-weight:600}
+input,select,textarea{width:100%;background:#141414;color:var(--prata-claro);
+  border:1px solid var(--borda);border-radius:10px;padding:12px 13px;font-family:inherit;font-size:16px;
+  outline:none;transition:border-color .15s,box-shadow .15s}
+input:focus,select:focus,textarea:focus{border-color:var(--prata);box-shadow:0 0 0 3px rgba(192,192,192,.12)}
+select,option{background-color:#141414;color:var(--prata-claro)}
+textarea{min-height:96px;resize:vertical}
+.campo{margin-bottom:14px}
+.linha{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+@media(max-width:560px){.linha{grid-template-columns:1fr}}
+.dica{font-size:13px;color:var(--cinza);margin-top:5px;text-transform:none;letter-spacing:0}
+.obrig{color:var(--erro)}
+
+.opts{display:grid;gap:10px}
+.opt{display:flex;gap:12px;align-items:flex-start;border:1px solid var(--borda);border-radius:12px;
+  padding:13px 14px;cursor:pointer;background:rgba(0,0,0,.28);transition:.15s}
+.opt:hover{border-color:rgba(192,192,192,.4)}
+.opt input{width:auto;flex:0 0 auto;margin-top:3px;accent-color:var(--prata)}
+.opt.sel{border-color:var(--prata);background:rgba(192,192,192,.09)}
+.opt .t{font-weight:700;letter-spacing:.05em}
+.opt .d{font-size:14px;color:var(--cinza)}
+
+.oculto{display:none}
+
+.sigbox{border:1px solid var(--borda);border-radius:12px;background:#0f0f0f;overflow:hidden}
+.sigbox canvas{display:block;width:100%;height:170px;touch-action:none;cursor:crosshair}
+.sigbar{display:flex;justify-content:space-between;align-items:center;padding:8px 12px;
+  border-top:1px solid var(--borda);background:rgba(0,0,0,.5)}
+.sigbar span{font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--cinza)}
+.limpar{background:none;border:1px solid var(--borda);color:var(--prata);border-radius:8px;
+  padding:6px 12px;font-family:inherit;font-size:13px;cursor:pointer;letter-spacing:.08em;text-transform:uppercase}
+.limpar:hover{border-color:var(--prata)}
+
+.check{display:flex;gap:11px;align-items:flex-start;font-size:15px;color:var(--prata);
+  text-transform:none;letter-spacing:0;line-height:1.4}
+.check input{width:auto;flex:0 0 auto;margin-top:3px;accent-color:var(--ok)}
+
+.enviar{width:100%;padding:17px;border:none;border-radius:12px;cursor:pointer;
+  font-family:'Orbitron',sans-serif;font-size:15px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;
+  background:linear-gradient(180deg,var(--prata-claro),var(--prata) 55%,#9d9d9d);color:#0A0A0A;
+  box-shadow:0 8px 26px rgba(192,192,192,.18);transition:.18s}
+.enviar:hover{transform:translateY(-1px)}
+.enviar:disabled{opacity:.45;cursor:not-allowed;transform:none}
+.enviar.ok{background:linear-gradient(180deg,#6ee7b7,var(--ok));color:#052e1a}
+
+.msg{margin-top:12px;padding:12px 14px;border-radius:10px;font-size:15px;display:none}
+.msg.e{display:block;background:rgba(229,72,77,.1);border:1px solid rgba(229,72,77,.4);color:#FF9A9D}
+
+/* sucesso */
+#tela-ok{display:none;text-align:center;padding:26px 6px}
+#tela-ok .ico{font-size:52px}
+#tela-ok h2{font-family:'Orbitron',sans-serif;letter-spacing:.14em;margin:10px 0 6px;font-size:19px}
+.proto{font-family:'Orbitron',sans-serif;font-size:30px;letter-spacing:.1em;color:#fff;margin:16px 0 4px}
+.resumo{text-align:left;border:1px solid var(--borda);border-radius:12px;padding:14px;margin:20px 0;font-size:15px}
+.resumo div{display:flex;justify-content:space-between;gap:12px;padding:5px 0;border-bottom:1px dashed rgba(192,192,192,.12)}
+.resumo div:last-child{border:none}
+.resumo b{color:var(--prata);font-weight:600}
+.btns{display:grid;gap:10px}
+.btn2{padding:14px;border-radius:11px;border:1px solid var(--borda);background:rgba(0,0,0,.4);
+  color:var(--prata-claro);font-family:inherit;font-size:15px;font-weight:600;letter-spacing:.1em;
+  text-transform:uppercase;cursor:pointer;text-decoration:none;display:block}
+.btn2:hover{border-color:var(--prata)}
+.duplic{margin-top:20px;background:#fdecea;border:2px solid #d32f2f;color:#b3231f;
+  border-radius:10px;padding:14px;font-weight:700;text-align:left;font-size:15px}
+.passo-link{margin:22px 0 4px;text-align:left;border:1px solid rgba(62,207,142,.4);
+  background:rgba(62,207,142,.06);border-radius:14px;padding:16px}
+.passo-link .pl-t{font-family:'Orbitron',sans-serif;font-size:12px;letter-spacing:.14em;
+  text-transform:uppercase;color:var(--ok);margin-bottom:10px}
+.pl-url{word-break:break-all;background:#0f0f0f;border:1px solid var(--borda);border-radius:10px;
+  padding:11px 12px;font-size:13px;color:var(--prata)}
+.btn2.destaque{background:linear-gradient(180deg,#6ee7b7,var(--ok));color:#052e1a;border:none}
+.btn2.copiado{border-color:var(--ok);color:var(--ok)}
+
+footer{text-align:center;color:#5a5a5a;font-size:12px;letter-spacing:.16em;
+  text-transform:uppercase;padding-top:26px}
+@media print{body::before{display:none}.card,.enviar,.aviso{display:none}}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<a class="painel-link" href="dashboard.html">&#128274; Painel</a>
+
+<header>
+  <img src="assets/logovegas.png" alt="Vegas Vigilância e Segurança">
+  <h1>Troca de Horário / Posto</h1>
+  <div class="sub">Vegas Vigilância e Segurança</div>
+</header>
+
+<div id="form-area">
+
+  <div class="aviso">
+    <b>Leia antes de enviar.</b> A troca só passa a valer <b>depois da aprovação do supervisor</b>.
+    Enviar a solicitação não autoriza a mudança de escala. Solicitações duplicadas ou com dados
+    falsos são passíveis de medida administrativa.
+  </div>
+
+  <!-- 1 -->
+  <div class="card">
+    <h2><span class="n">1</span>Quem está solicitando</h2>
+    <div class="campo"><label>Nome completo <span class="obrig">*</span></label>
+      <input id="nome" autocomplete="name" placeholder="Nome como consta no cadastro"></div>
+    <div class="linha">
+      <div class="campo"><label>CPF <span class="obrig">*</span></label>
+        <input id="cpf" inputmode="numeric" maxlength="14" placeholder="000.000.000-00"></div>
+      <div class="campo"><label>Cargo <span class="obrig">*</span></label>
+        <select id="funcao"><option value="">Selecione o seu cargo</option></select></div>
+    </div>
+    <div class="campo oculto" id="campo-funcao-outra"><label>Qual cargo?</label>
+      <input id="funcaoOutra" placeholder="Escreva o cargo como consta no contracheque"></div>
+    <div class="campo"><label>WhatsApp <span class="obrig">*</span></label>
+      <input id="telefone" inputmode="tel" placeholder="(24) 90000-0000" maxlength="16"></div>
+    <div class="linha">
+      <div class="campo"><label>Cidade <span class="obrig">*</span></label>
+        <select id="cidadeAtual"><option value="">Selecione a cidade</option></select></div>
+      <div class="campo"><label>Posto de serviço atual <span class="obrig">*</span></label>
+        <select id="postoAtual" disabled><option value="">Escolha a cidade primeiro</option></select></div>
+    </div>
+    <div class="linha">
+      <div class="campo"><label>Horário atual <span class="obrig">*</span></label>
+        <select id="turnoAtual"><option value="">Selecione</option></select></div>
+    </div>
+  </div>
+
+  <!-- 2 -->
+  <div class="card">
+    <h2><span class="n">2</span>O que você quer trocar</h2>
+    <div class="opts" id="g-tipo">
+      <label class="opt"><input type="radio" name="tipo" value="Dia por dia">
+        <span><span class="t">Dia por dia</span><br><span class="d">Troco um dia da minha escala com outro colega.</span></span></label>
+      <label class="opt"><input type="radio" name="tipo" value="Turno por turno">
+        <span><span class="t">Turno por turno</span><br><span class="d">Passo do meu turno para outro turno.</span></span></label>
+      <label class="opt"><input type="radio" name="tipo" value="Posto por posto">
+        <span><span class="t">Posto por posto</span><br><span class="d">Passo do meu posto de serviço para outro posto.</span></span></label>
+    </div>
+  </div>
+
+  <!-- 3 -->
+  <div class="card">
+    <h2><span class="n">3</span>Por quanto tempo</h2>
+    <div class="opts" id="g-mod">
+      <label class="opt"><input type="radio" name="mod" value="Temporária" checked>
+        <span><span class="t">Temporária</span><br><span class="d">Vale só por um período determinado.</span></span></label>
+      <label class="opt"><input type="radio" name="mod" value="Definitiva">
+        <span><span class="t">Definitiva</span><br><span class="d">Passa a ser a minha nova escala.</span></span></label>
+    </div>
+    <div id="bloco-periodo" style="margin-top:14px">
+      <div class="linha">
+        <div class="campo"><label>Início do período <span class="obrig">*</span></label><input type="date" id="periodoInicio"></div>
+        <div class="campo"><label>Fim do período <span class="obrig">*</span></label><input type="date" id="periodoFim"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 4 -->
+  <div class="card" id="card-det">
+    <h2><span class="n">4</span>Detalhe da troca</h2>
+
+    <div id="det-dia" class="oculto">
+      <div class="linha">
+        <div class="campo"><label>Dia que eu deixo de trabalhar <span class="obrig">*</span></label><input type="date" id="dataOrigem"></div>
+        <div class="campo"><label>Dia que eu vou trabalhar <span class="obrig">*</span></label><input type="date" id="dataDestino"></div>
+      </div>
+    </div>
+
+    <div id="det-turno" class="oculto">
+      <div class="campo"><label>Horário desejado <span class="obrig">*</span></label>
+        <select id="turnoDestino"><option value="">Selecione</option></select></div>
+      <div class="dica">O horário já inclui a escala. Ex.: sair de 12x36 Noturno para 12x36 Diurno.</div>
+    </div>
+
+    <div id="det-posto" class="oculto">
+      <div class="linha">
+        <div class="campo"><label>Cidade do posto desejado <span class="obrig">*</span></label>
+          <select id="cidadeDestino"><option value="">Selecione a cidade</option></select></div>
+        <div class="campo"><label>Posto desejado <span class="obrig">*</span></label>
+          <select id="postoDestino" disabled><option value="">Escolha a cidade primeiro</option></select></div>
+      </div>
+    </div>
+
+    <div id="det-vazio" class="dica">Escolha primeiro o tipo de troca no passo 2.</div>
+  </div>
+
+  <!-- 5 -->
+  <div class="card">
+    <h2><span class="n">5</span>Solicita a quem</h2>
+    <div class="campo"><label>Nome do colega envolvido <span class="obrig">*</span></label>
+      <input id="colegaNome" placeholder="Quem vai assumir / trocar com você">
+      <div class="dica">É o colega que fica no seu lugar (ou com quem você troca).</div></div>
+    <div class="linha">
+      <div class="campo"><label>CPF do colega <span class="obrig">*</span></label>
+        <input id="colegaCpf" inputmode="numeric" maxlength="14" placeholder="000.000.000-00">
+        <div class="dica">Ele vai digitar este mesmo CPF para assinar.</div></div>
+      <div class="campo"><label>WhatsApp do colega <span class="obrig">*</span></label>
+        <input id="colegaTelefone" inputmode="tel" maxlength="16" placeholder="(24) 90000-0000">
+        <div class="dica">É por aqui que você manda o link de assinatura.</div></div>
+    </div>
+    <div class="linha">
+      <div class="campo"><label>Cidade do colega <span class="obrig">*</span></label>
+        <select id="colegaCidade"><option value="">Selecione a cidade</option></select></div>
+      <div class="campo"><label>Posto de serviço do colega <span class="obrig">*</span></label>
+        <select id="colegaPosto" disabled><option value="">Escolha a cidade primeiro</option></select></div>
+    </div>
+    <div class="dica" style="margin-top:-4px">Onde o colega trabalha hoje.</div>
+  </div>
+
+  <!-- 6 -->
+  <div class="card">
+    <h2><span class="n">6</span>Motivo</h2>
+    <div class="campo"><label>Explique o motivo da troca <span class="obrig">*</span></label>
+      <textarea id="motivo" maxlength="600" placeholder="Seja objetivo. Ex.: consulta médica agendada, compromisso familiar, curso..."></textarea>
+      <div class="dica"><span id="cont">0</span>/600 — mínimo de 15 caracteres.</div></div>
+  </div>
+
+  <!-- 7 -->
+  <div class="card">
+    <h2><span class="n">7</span>Sua assinatura</h2>
+    <div class="campo">
+      <label>Assinatura do solicitante <span class="obrig">*</span></label>
+      <div class="sigbox">
+        <canvas id="sig1"></canvas>
+        <div class="sigbar"><span id="nome-sig1">Solicitante</span><button type="button" class="limpar" data-alvo="sig1">Limpar</button></div>
+      </div>
+    </div>
+    <div class="dica">Assine com o dedo (no celular) ou com o mouse.</div>
+
+    <div class="aviso" style="margin:16px 0 0">
+      <b>O colega assina depois, no celular dele.</b> Ao enviar, o sistema gera um link
+      exclusivo desta solicitação. Você manda esse link para o colega; quando ele assinar,
+      o documento com as duas assinaturas vai automaticamente para a supervisão.
+    </div>
+
+    <div class="campo" style="margin-top:16px">
+      <label class="check"><input type="checkbox" id="ciente">
+        Declaro que as informações são verdadeiras, que já combinei a troca com o colega, e que a
+        troca só vale após a aprovação do supervisor.</label>
+    </div>
+  </div>
+
+  <button class="enviar" id="btn">Gerar link para o colega assinar</button>
+  <div class="msg" id="msg"></div>
+</div>
+
+<div id="tela-ok">
+  <div class="ico">✓</div>
+  <h2>Falta a assinatura do colega</h2>
+  <div class="sub">Protocolo</div>
+  <div class="proto" id="ok-proto">TRC-0000</div>
+  <div class="dica">Guarde este número. Ele identifica sua solicitação.</div>
+
+  <div class="passo-link">
+    <div class="pl-t">Mande este link para <span id="ok-colega">o colega</span></div>
+    <div class="pl-url" id="ok-link">—</div>
+    <div class="btns" style="margin-top:12px">
+      <a class="btn2 destaque" id="ok-whats-colega" target="_blank" rel="noopener">Enviar no WhatsApp do colega</a>
+      <button class="btn2" id="ok-copiar">Copiar link</button>
+    </div>
+    <div class="dica" style="margin-top:10px">O colega abre o link, confere os dados, digita o CPF dele e assina.
+      Só depois disso a solicitação chega à supervisão para aprovação.</div>
+  </div>
+
+  <div class="resumo" id="ok-resumo"></div>
+  <div class="btns">
+    <button class="btn2" onclick="location.reload()">Fazer nova solicitação</button>
+  </div>
+  <div class="duplic">Não envie a mesma solicitação duas vezes. Você já tem protocolo — reenvio duplicado
+    gera retrabalho na escala e está sujeito a medida administrativa.</div>
+</div>
+
+<footer>Vegas Vigilância e Segurança · Uso interno</footer>
+</div>
+
+<script>
+const API_URL = 'https://script.google.com/macros/s/AKfycbxOP3VM3VUCXR-kFNJcwFrbFApDirg8oTYZn7uul-zTswrAnnAzB_sYUeL-_dYnSHHE/exec';
+
+const RESERVA = {
+  Cargos:{
+    "Operacional":["VIGILANTE","VIGILANTE MOTORISTA","VIGIA","PORTEIRO","CONTROLADOR DE ACESSO","FISCAL","FISCAL DE LOJA","AUXILIAR DE SERVIÇOS GERAIS","AUXILIAR DE SERVIÇOS GERAIS II","ZELADOR","JOVEM APRENDIZ"],
+    "Monitoramento":["OPERADOR DE CFTV","OPERADOR DE CFTV II","ENCARREGADO DE MONITORAMENTO","GERENTE DE MONITORAMENTO"],
+    "Alarmes":["FISCAL DE ALARMES","FISCAL DE ALARMES I","FISCAL DE ALARMES II","OPERADOR DE SISTEMA ELETRONICO DE SEGURANÇA I","OPERADOR DE SISTEMA ELETRONICO DE SEGURANÇA II"],
+    "Técnico":["AUXILIAR TECNICO","AUXILIAR DE INSTALADOR","AUXILIAR DE INSTALADOR I","INSTALADOR DE SISTEMA ELETRONICO I","INSTALADOR DE SISTEMA ELETRONICO II","INSTALADOR DE SISTEMA ELETRONICO III","INSTALADOR/MANTENEDOR DE SISTEMA ELETRONICO II","TECNICO","TECNICO I","TECNICO II","TECNICO III","TECNICO DE MANUTENÇAO ELETRONICO","TECNICO DE MANUTENÇÃO ELETRONICO","TECNICO DE SEGURANÇA","ANALISTA DE SISTEMA DE AUTOMAÇÃO","ENCARREGADO TÉCNICO","SUPERVISOR TECNICO","COORDENADOR TECNICO"],
+    "Administrativo":["ADMINISTRADOR","ASSISTENTE ADMINISTRATIVO","ASSISTENTE DE DEPARTAMENTO PESSOAL","ASSISTENTE FINANCEIRO","ASSISTENTE JURIDICO","ANALISTA JURIDICO","AUXILIAR ADMINISTRATIVO","AUXILIAR DE ESCRITÓRIO","VENDEDOR"],
+    "Liderança e gestão":["SUPERVISOR DE POSTO","SUPERVISOR DE AREA","COORDENADOR DE OPERAÇÕES","COORDENADOR DE RECURSOS OPERACIONAIS","COORDENADOR(A) COMERCIAL","COORDENADOR(A) DE ESTOQUE E SUPRIMENTO","COORDENADOR(A) DE ESTOQUE E SUPRIMENTOS","COORDENADOR(A) DE FROTA","COORDENADOR(A) DE POS VENDAS","COORDENADOR(A) DE TI","COORDENADOR(A) FINANCEIRO","COORDENADORA FINANCEIRA","ENCARREGADO DE RH","ENCARREGADO FINANCEIRO","LIDER DE RH","GERENTE COMERCIAL","GERENTE DE ATENDIMENTO","GERENTE DE ESTOQUE E SUPRIMENTOS","GERENTE DE FROTA","GERENTE DE PÓS VENDAS","GERENTE DE RECURSOS HUMANOS","GERENTE DE TI","GERENTE FINANCEIRO","GESTOR DE SEGURANÇA","SUPERINTENDENTE DE RECURSOS HUMANOS","DIRETOR"],
+    "Outro":["Outra"]
+  },
+
+  Turnos:['12x36 Diurno','12x36 Noturno','5x2 Diurno','5x2 Noturno','8h às 18h'],
+  Postos:{
+    "Barra do Piraí":["MCI Reciclagem","Ceneged BP"],
+    "Barra Mansa":["Royal Centro BM","Royal Boa Vista","Julio BF","Ceneged BM","Transporte Excelsior","Estik Filmes","Estik Filmes ASG","Expresso Massa Falida","Rede Aliança"],
+    "Miguel Pereira":["Ceneged ASG Miguel Pereira"],
+    "Niterói":["Sede Niterói"],
+    "Nova Iguaçu":["Royal"],
+    "Pinheiral":["Norsil","Perfyaço"],
+    "Piraí":["Peter's House","Mata do Amador"],
+    "Porto Real":["Vila Vitória"],
+    "Queimados":["Lanlimp"],
+    "Resende":["Tachi-S Brasil Porteiro","Tachi-S Brasil Vigilante","Nagumo","Brabus","Zen Cozinha Oriental","Udiaço","Scapini","Royal Campos Elisios","Royal Manejo"],
+    "Sapucaia":["Ceneged Sapucaia"],
+    "Três Rios":["Royal 3 Rios","Ceneged TR"],
+    "Valença":["Ceneged"],
+    "Volta Redonda":["Sede Volta Redonda","Fast Broker","Cicuta","Lauer Engenharia","Administrativo","Área Técnica","Monitoramento","Comercial","Nagumo","Royal Vila Sta Cecilia","Royal Retiro","Royal Sessenta","Royal Aterrado","Royal Amaral Peixoto","Royal São Lucas","Royale","Vincol","Gerdau","Projeto Vida","Edifício Cecisa I","Condomínio Maximum","Sind. Met. Sul Fluminense","A. Abreu Beneficiamento","Arena Emirados","Transporte Excelsior","Economy","Gran Milano"]
+  }
+};
+
+const $ = id => document.getElementById(id);
+let POSTOS = RESERVA.Postos, CARGOS = RESERVA.Cargos;
+
+// ── listas
+(async function carregarListas(){
+  let L = RESERVA;
+  try{
+    const r = await fetch(API_URL+'?action=listas');
+    const j = await r.json();
+    if(j.ok && j.listas) L = Object.assign({}, RESERVA, j.listas);
+  }catch(e){}
+  POSTOS = (L.Postos && !Array.isArray(L.Postos)) ? L.Postos : RESERVA.Postos;
+  const sel = (el,arr,ph)=>{ el.innerHTML = `<option value="">${ph||'Selecione'}</option>` + arr.map(v=>`<option>${v}</option>`).join(''); };
+  const cidades = Object.keys(POSTOS).sort((a,b)=>a.localeCompare(b,'pt-BR'));
+  ['cidadeAtual','cidadeDestino','colegaCidade'].forEach(id=>sel($(id), cidades, 'Selecione a cidade'));
+  CARGOS = (L.Cargos && !Array.isArray(L.Cargos)) ? L.Cargos : RESERVA.Cargos;
+  $('funcao').innerHTML = '<option value="">Selecione o seu cargo</option>' +
+    Object.keys(CARGOS).map(g=>`<optgroup label="${g}">` +
+      CARGOS[g].map(c=>`<option>${c}</option>`).join('') + '</optgroup>').join('');
+  sel($('turnoAtual'), L.Turnos||RESERVA.Turnos); sel($('turnoDestino'), L.Turnos||RESERVA.Turnos);
+})();
+
+function ligarCidadePosto(idCidade, idPosto){
+  $(idCidade).addEventListener('change', ()=>{
+    const c = $(idCidade).value, alvo = $(idPosto);
+    const lista = POSTOS[c] || [];
+    if(!c){ alvo.disabled=true; alvo.innerHTML='<option value="">Escolha a cidade primeiro</option>'; return; }
+    alvo.disabled = false;
+    alvo.innerHTML = '<option value="">Selecione o posto</option>' +
+      lista.slice().sort((a,b)=>a.localeCompare(b,'pt-BR')).map(v=>`<option>${v}</option>`).join('');
+  });
+}
+ligarCidadePosto('cidadeAtual','postoAtual');
+ligarCidadePosto('cidadeDestino','postoDestino');
+ligarCidadePosto('colegaCidade','colegaPosto');
+
+$('funcao').addEventListener('change', e=>{
+  $('campo-funcao-outra').classList.toggle('oculto', e.target.value!=='Outra');
+});
+
+// ── máscara telefone
+function mask(el){
+  el.addEventListener('input',()=>{
+    let v = el.value.replace(/\D/g,'').slice(0,11);
+    if(v.length>6) el.value = `(${v.slice(0,2)}) ${v.slice(2,7)}-${v.slice(7)}`;
+    else if(v.length>2) el.value = `(${v.slice(0,2)}) ${v.slice(2)}`;
+    else el.value = v;
+  });
+}
+mask($('telefone')); mask($('colegaTelefone'));
+
+function maskCpf(el){
+  el.addEventListener('input',()=>{
+    let v = el.value.replace(/\D/g,'').slice(0,11);
+    v = v.replace(/(\d{3})(\d)/,'$1.$2').replace(/(\d{3})\.(\d{3})(\d)/,'$1.$2.$3')
+         .replace(/(\d{3})\.(\d{3})\.(\d{3})(\d)/,'$1.$2.$3-$4');
+    el.value = v;
+  });
+}
+maskCpf($('cpf')); maskCpf($('colegaCpf'));
+
+function cpfValido(str){
+  const c = String(str||'').replace(/\D/g,'');
+  if(c.length!==11 || /^(\d)\1{10}$/.test(c)) return false;
+  for(let t=9;t<11;t++){
+    let s=0; for(let i=0;i<t;i++) s+=parseInt(c[i],10)*((t+1)-i);
+    let d=(s*10)%11; if(d===10) d=0;
+    if(d!==parseInt(c[t],10)) return false;
+  }
+  return true;
+}
+
+$('motivo').addEventListener('input',e=>$('cont').textContent=e.target.value.length);
+$('nome').addEventListener('input',e=>$('nome-sig1').textContent=e.target.value.trim()||'Solicitante');
+
+// ── radios
+function marcar(grupo){
+  document.querySelectorAll(`#${grupo} .opt`).forEach(o=>o.classList.toggle('sel', o.querySelector('input').checked));
+}
+document.querySelectorAll('#g-tipo input').forEach(i=>i.addEventListener('change',()=>{
+  marcar('g-tipo');
+  const t = i.value;
+  $('det-dia').classList.toggle('oculto', t!=='Dia por dia');
+  $('det-turno').classList.toggle('oculto', t!=='Turno por turno');
+  $('det-posto').classList.toggle('oculto', t!=='Posto por posto');
+  $('det-vazio').classList.add('oculto');
+}));
+document.querySelectorAll('#g-mod input').forEach(i=>i.addEventListener('change',()=>{
+  marcar('g-mod');
+  $('bloco-periodo').classList.toggle('oculto', i.value!=='Temporária');
+}));
+marcar('g-mod');
+
+// ── assinatura
+function padAssinatura(id){
+  const c = $(id), ctx = c.getContext('2d');
+  let desenhando=false, vazio=true;
+  function resize(){
+    const r = c.getBoundingClientRect(), dpr = window.devicePixelRatio||1;
+    const img = vazio?null:c.toDataURL();
+    c.width = r.width*dpr; c.height = r.height*dpr;
+    ctx.setTransform(dpr,0,0,dpr,0,0); ctx.lineWidth=2.4; ctx.lineCap='round'; ctx.lineJoin='round';
+    ctx.strokeStyle='#E8E8E8';
+    if(img){ const im=new Image(); im.onload=()=>ctx.drawImage(im,0,0,r.width,r.height); im.src=img; }
+  }
+  const pos = e => { const r=c.getBoundingClientRect(); return {x:e.clientX-r.left, y:e.clientY-r.top}; };
+  c.addEventListener('pointerdown',e=>{c.setPointerCapture(e.pointerId);desenhando=true;vazio=false;
+    const p=pos(e);ctx.beginPath();ctx.moveTo(p.x,p.y);});
+  c.addEventListener('pointermove',e=>{if(!desenhando)return;const p=pos(e);ctx.lineTo(p.x,p.y);ctx.stroke();});
+  c.addEventListener('pointerup',()=>desenhando=false);
+  c.addEventListener('pointerleave',()=>desenhando=false);
+  window.addEventListener('resize',resize);
+  resize();
+  return {
+    vazio:()=>vazio,
+    limpar:()=>{ctx.clearRect(0,0,c.width,c.height);vazio=true;},
+    dados:()=>{
+      const t=document.createElement('canvas'); t.width=c.width; t.height=c.height;
+      const g=t.getContext('2d'); g.fillStyle='#FFFFFF'; g.fillRect(0,0,t.width,t.height);
+      g.drawImage(c,0,0);
+      // inverte traço claro para escuro sobre fundo branco
+      const d=g.getImageData(0,0,t.width,t.height), px=d.data;
+      for(let i=0;i<px.length;i+=4){ if(px[i]>150&&px[i+1]>150&&px[i+2]>150&&px[i+3]===255&&
+        !(px[i]===255&&px[i+1]===255&&px[i+2]===255)){px[i]=20;px[i+1]=20;px[i+2]=20;} }
+      g.putImageData(d,0,0);
+      return t.toDataURL('image/png');
+    }
+  };
+}
+const pads = {sig1:padAssinatura('sig1')};
+document.querySelectorAll('.limpar').forEach(b=>b.addEventListener('click',()=>pads[b.dataset.alvo].limpar()));
+
+// ── envio
+function erro(t){ const m=$('msg'); m.className='msg e'; m.textContent=t; m.scrollIntoView({behavior:'smooth',block:'center'}); }
+
+$('btn').addEventListener('click', async ()=>{
+  $('msg').className='msg';
+  const tipo = document.querySelector('#g-tipo input:checked');
+  const mod  = document.querySelector('#g-mod input:checked');
+
+  const d = {
+    action:'criar',
+    nome:$('nome').value.trim(), cpf:$('cpf').value.trim(),
+    funcao:($('funcao').value==='Outra' ? $('funcaoOutra').value.trim() : $('funcao').value),
+    telefone:$('telefone').value.trim(),
+    cidadeAtual:$('cidadeAtual').value, postoAtual:$('postoAtual').value, turnoAtual:$('turnoAtual').value,
+    tipoTroca:tipo?tipo.value:'', modalidade:mod?mod.value:'',
+    dataOrigem:$('dataOrigem').value, dataDestino:$('dataDestino').value,
+    periodoInicio:$('periodoInicio').value, periodoFim:$('periodoFim').value,
+    turnoDestino:$('turnoDestino').value,
+    cidadeDestino:$('cidadeDestino').value, postoDestino:$('postoDestino').value,
+    colegaNome:$('colegaNome').value.trim(), colegaCpf:$('colegaCpf').value.trim(),
+    colegaTelefone:$('colegaTelefone').value.trim(),
+    colegaCidade:$('colegaCidade').value, colegaPosto:$('colegaPosto').value,
+    motivo:$('motivo').value.trim()
+  };
+
+  if(!d.nome) return erro('Informe seu nome completo.');
+  if(!cpfValido(d.cpf)) return erro('CPF do solicitante inválido. Confira os números.');
+  if(d.telefone.replace(/\D/g,'').length<10) return erro('Informe um WhatsApp válido com DDD.');
+  if(!d.funcao) return erro('Selecione o seu cargo.');
+  if(!d.cidadeAtual) return erro('Selecione a cidade do seu posto.');
+  if(!d.postoAtual) return erro('Selecione o seu posto de serviço atual.');
+  if(!d.turnoAtual) return erro('Selecione o seu horário atual.');
+  if(!d.tipoTroca) return erro('Escolha o que você quer trocar (passo 2).');
+  if(d.modalidade==='Temporária' && (!d.periodoInicio || !d.periodoFim)) return erro('Informe o período da troca temporária.');
+  if(d.periodoInicio && d.periodoFim && d.periodoFim < d.periodoInicio) return erro('O fim do período não pode ser antes do início.');
+  if(d.tipoTroca==='Dia por dia' && (!d.dataOrigem || !d.dataDestino)) return erro('Informe os dois dias da troca (passo 4).');
+  if(d.tipoTroca==='Turno por turno' && !d.turnoDestino) return erro('Selecione o horário desejado (passo 4).');
+  if(d.tipoTroca==='Turno por turno' && d.turnoDestino===d.turnoAtual) return erro('O horário desejado é igual ao horário atual.');
+  if(d.tipoTroca==='Posto por posto' && !d.cidadeDestino) return erro('Selecione a cidade do posto desejado (passo 4).');
+  if(d.tipoTroca==='Posto por posto' && !d.postoDestino) return erro('Selecione o posto desejado (passo 4).');
+  if(d.tipoTroca==='Posto por posto' && d.postoDestino===d.postoAtual && d.cidadeDestino===d.cidadeAtual)
+    return erro('O posto desejado é igual ao posto atual.');
+  if(!d.colegaNome) return erro('Informe o nome do colega envolvido.');
+  if(!cpfValido(d.colegaCpf)) return erro('CPF do colega inválido. Confira os números.');
+  if(d.cpf.replace(/\D/g,'')===d.colegaCpf.replace(/\D/g,'')) return erro('O CPF do colega não pode ser igual ao seu.');
+  if(d.colegaTelefone.replace(/\D/g,'').length<10) return erro('Informe o WhatsApp do colega com DDD — é por ele que o link de assinatura vai.');
+  if(!d.colegaCidade) return erro('Selecione a cidade do colega.');
+  if(!d.colegaPosto) return erro('Selecione o posto de serviço do colega.');
+  if(d.motivo.length<15) return erro('Descreva o motivo com mais detalhe (mínimo 15 caracteres).');
+  if(pads.sig1.vazio()) return erro('Falta a sua assinatura.');
+  if(!$('ciente').checked) return erro('Marque a declaração no final do formulário.');
+
+  d.assinSolicitante = pads.sig1.dados();
+
+  const btn=$('btn'); btn.disabled=true; btn.textContent='Gerando link...';
+  try{
+    const r = await fetch(API_URL,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify(d)});
+    const j = await r.json();
+    if(!j.ok){ btn.disabled=false; btn.textContent='Gerar link para o colega assinar'; return erro(j.erro||'Não foi possível registrar.'); }
+
+    btn.classList.add('ok'); btn.textContent='Link gerado ✓';
+    $('ok-proto').textContent = j.protocolo;
+
+    const link = new URL('assinar.html', location.href).href + '?t=' + encodeURIComponent(j.token);
+    $('ok-link').textContent = link;
+    $('ok-colega').textContent = d.colegaNome;
+    const texto = encodeURIComponent(
+      `Oi, ${d.colegaNome}. Abri a solicitação de troca ${j.protocolo} na Vegas e coloquei seu nome. ` +
+      `Para valer, preciso da sua assinatura neste link: ${link}`);
+    $('ok-whats-colega').href = j.colegaWhats ? `https://wa.me/${j.colegaWhats}?text=${texto}`
+                                             : `https://wa.me/?text=${texto}`;
+    $('ok-copiar').addEventListener('click', async ()=>{
+      try{ await navigator.clipboard.writeText(link); }
+      catch(e){ const t=document.createElement('textarea'); t.value=link; document.body.appendChild(t);
+                t.select(); document.execCommand('copy'); t.remove(); }
+      const b=$('ok-copiar'); b.classList.add('copiado'); b.textContent='Link copiado';
+      setTimeout(()=>{ b.classList.remove('copiado'); b.textContent='Copiar link'; }, 2500);
+    });
+
+    const det = d.tipoTroca==='Dia por dia' ? `${br(d.dataOrigem)} → ${br(d.dataDestino)}`
+              : d.tipoTroca==='Turno por turno' ? `${d.turnoAtual} → ${d.turnoDestino}`
+              : `${d.postoAtual} (${d.cidadeAtual}) → ${d.postoDestino} (${d.cidadeDestino})`;
+    $('ok-resumo').innerHTML = [
+      ['Solicitante', d.nome],['Tipo', d.tipoTroca],['Detalhe', det],
+      ['Modalidade', d.modalidade + (d.modalidade==='Temporária'?` (${br(d.periodoInicio)} a ${br(d.periodoFim)})`:'')],
+      ['Colega', d.colegaNome + ' — ' + d.colegaPosto + ' / ' + d.colegaCidade],
+      ['Situação','Aguardando assinatura do colega']
+    ].map(([k,v])=>`<div><b>${k}</b><span>${v}</span></div>`).join('');
+    $('form-area').style.display='none';
+    $('tela-ok').style.display='block';
+    window.scrollTo({top:0,behavior:'smooth'});
+  }catch(e){
+    btn.disabled=false; btn.textContent='Gerar link para o colega assinar';
+    erro('Falha de conexão. Verifique a internet e tente novamente.');
+  }
+});
+function br(iso){ if(!iso) return '—'; const [a,m,d]=iso.split('-'); return `${d}/${m}/${a}`; }
+</script>
+</body>
+</html>
