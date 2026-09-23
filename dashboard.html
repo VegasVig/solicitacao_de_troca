@@ -84,6 +84,8 @@ header.topo .acoes{margin-left:auto;display:flex;gap:8px;flex-wrap:wrap}
 .tag.aguarda{color:#9FD4FF;border-color:rgba(120,180,255,.45);background:rgba(120,180,255,.09)}
 .bt.doc{background:none;border:1px solid rgba(62,207,142,.5);color:var(--ok)}
 .bt.copiado{border-color:var(--ok);color:var(--ok)}
+.bt.excluir{background:none;border:1px solid rgba(229,72,77,.5);color:#FF9A9D}
+.bt.excluir.confirmar{background:linear-gradient(180deg,#ff9a9d,var(--erro));color:#3a0508;border-color:var(--erro)}
 .aviso-colega{margin-top:14px;padding:11px 13px;border-radius:10px;font-size:15px;
   border:1px solid rgba(120,180,255,.35);background:rgba(120,180,255,.06);color:#BFE1FF}
 .item .quando{margin-left:auto;font-size:13px;color:var(--cinza)}
@@ -117,21 +119,6 @@ label{display:block;font-size:12px;letter-spacing:.1em;text-transform:uppercase;
 .sigbar span{font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--cinza)}
 textarea{min-height:80px;resize:vertical}
 
-/* ficha impressa */
-#ficha{display:none}
-@media print{
-  body::before{display:none}
-  .wrap,.modal{display:none !important}
-  #ficha{display:block;background:#fff;color:#000;font-family:Arial,Helvetica,sans-serif;padding:0}
-  #ficha .cab{border-bottom:2px solid #000;padding-bottom:8px;margin-bottom:14px}
-  #ficha h2{margin:0;font-size:16px;letter-spacing:.06em}
-  #ficha table{width:100%;border-collapse:collapse;font-size:12px}
-  #ficha td{border:1px solid #444;padding:6px 8px;vertical-align:top}
-  #ficha td.k{width:30%;background:#eee;font-weight:bold;text-transform:uppercase;font-size:10px}
-  #ficha .sig{display:flex;gap:20px;margin-top:26px}
-  #ficha .sig div{flex:1;text-align:center;font-size:10px;text-transform:uppercase}
-  #ficha .sig img{width:100%;height:70px;object-fit:contain;border-bottom:1px solid #000}
-}
 </style>
 </head>
 <body>
@@ -160,7 +147,6 @@ textarea{min-height:80px;resize:vertical}
     </div>
     <div class="acoes">
       <button class="bt ghost" id="btRecarregar">Atualizar</button>
-      <button class="bt ghost" id="btCsv">Exportar CSV</button>
       <a class="bt ghost" href="index.html" style="text-decoration:none;display:inline-flex;align-items:center">Formulário</a>
       <button class="bt ghost" id="btSair">Sair</button>
     </div>
@@ -204,8 +190,6 @@ textarea{min-height:80px;resize:vertical}
     </div>
   </div>
 </div>
-
-<div id="ficha"></div>
 
 <script>
 const API_URL = 'https://script.google.com/macros/s/AKfycbxOP3VM3VUCXR-kFNJcwFrbFApDirg8oTYZn7uul-zTswrAnnAzB_sYUeL-_dYnSHHE/exec';
@@ -289,7 +273,8 @@ function render(){
   $('lista').innerHTML = L.map(cardItem).join('');
   document.querySelectorAll('[data-acao]').forEach(b=>b.addEventListener('click',async ()=>{
     const p=b.dataset.proto, a=b.dataset.acao;
-    if(a==='imprimir') return imprimir(p);
+    if(a==='pdf') return gerarPdf(p, b);
+    if(a==='excluir') return excluirFicha(p, b);
     if(a==='copiar'){
       const d=DADOS.find(x=>x.protocolo===p); if(!d||!d.token) return;
       const url=linkColega(d.token);
@@ -340,21 +325,22 @@ function cardItem(d){
   const doc = d.documento
     ? `<a class="bt doc" href="${esc(d.documento)}" target="_blank" rel="noopener"
          style="text-decoration:none;display:inline-flex;align-items:center">Abrir documento assinado</a>` : '';
-  const imprimir = `<button class="bt ghost" data-acao="imprimir" data-proto="${d.protocolo}">Imprimir ficha</button>`;
+  const acoesFicha = `<button class="bt ghost" data-acao="pdf" data-proto="${d.protocolo}">Gerar PDF</button>
+                    <button class="bt excluir" data-acao="excluir" data-proto="${d.protocolo}">Excluir ficha</button>`;
   let botoes;
   if(d.status==='Pendente'){
     botoes = `<button class="bt aprova" data-acao="Aprovada" data-proto="${d.protocolo}">Aprovar</button>
               <button class="bt recusa" data-acao="Recusada" data-proto="${d.protocolo}">Recusar</button>
-              ${doc}${imprimir}`;
+              ${doc}${acoesFicha}`;
   } else if(d.status==='Aguardando colega'){
     const wa = d.colegaTelefone ? '55'+String(d.colegaTelefone).replace(/\D/g,'') : '';
     const texto = encodeURIComponent(`Solicitação de troca ${d.protocolo} na Vegas: falta a sua assinatura. Assine aqui: ${d.token?linkColega(d.token):''}`);
     botoes = `${d.token?`<button class="bt ghost" data-acao="copiar" data-proto="${d.protocolo}">Copiar link do colega</button>`:''}
               ${d.token?`<a class="bt ghost" href="https://wa.me/${wa}?text=${texto}" target="_blank" rel="noopener"
                  style="text-decoration:none;display:inline-flex;align-items:center">Cobrar no WhatsApp</a>`:''}
-              ${imprimir}`;
+              ${acoesFicha}`;
   } else {
-    botoes = `${doc}${imprimir}`;
+    botoes = `${doc}${acoesFicha}`;
   }
   return `<div class="item card">
     <div class="cab">
@@ -457,50 +443,47 @@ $('mConfirmar').addEventListener('click', async ()=>{
   finally{ b.disabled=false; b.textContent=txt; }
 });
 
-// ─────────── ficha para impressão
-function imprimir(proto){
-  const d = DADOS.find(x=>x.protocolo===proto); if(!d) return;
-  const [de,para]=rotaDe(d);
-  const linha=(k,v)=>`<tr><td class="k">${k}</td><td>${esc(v||'—')}</td></tr>`;
-  $('ficha').innerHTML=`
-    <div class="cab"><h2>VEGAS VIGILÂNCIA E SEGURANÇA — SOLICITAÇÃO DE TROCA</h2>
-      <div style="font-size:11px">Protocolo ${d.protocolo} · Registrado em ${esc(d.registro)} · Situação: ${esc(d.status)}</div></div>
-    <table>
-      ${linha('Solicitante', d.nome + (d.cpf?' — CPF '+d.cpf:''))}
-      ${linha('Função / escala', (d.funcao||'—')+' / '+(d.escala||'—'))}
-      ${linha('Contato', d.telefone)}
-      ${linha('Posto e turno atual', d.postoAtual+' — '+d.turnoAtual)}
-      ${linha('Tipo de troca', d.tipoTroca)}
-      ${linha('Modalidade', d.modalidade + (d.periodoInicio?' ('+br(d.periodoInicio)+' a '+br(d.periodoFim)+')':''))}
-      ${linha('Troca', br(de)+'  →  '+br(para))}
-      ${linha('Solicita a', d.colegaNome + (d.colegaCpf?' — CPF '+d.colegaCpf:''))}
-      ${linha('Posto do colega', d.colegaPosto)}
-      ${linha('Motivo', d.motivo)}
-      ${linha('Assinatura do colega', d.dataAssinColega ? 'Assinada em '+d.dataAssinColega : 'Ainda não assinada')}
-      ${d.motivoRecusaColega?linha('Recusa do colega', d.motivoRecusaColega):''}
-      ${linha('Decisão', d.status + (d.supervisor?' por '+d.supervisor:'') + (d.dataDecisao?' em '+d.dataDecisao:''))}
-      ${d.observacao?linha('Observação da supervisão', d.observacao):''}
-    </table>
-    <div class="sig">
-      <div><img src="${thumb(d.assinSolicitante)}"><br>Solicitante<br>${esc(d.nome)}</div>
-      <div><img src="${thumb(d.assinColega)}"><br>Colega envolvido<br>${esc(d.colegaNome)}</div>
-      <div><img src="${thumb(d.assinSupervisor)}"><br>Supervisor<br>${esc(d.supervisor||'—')}</div>
-    </div>`;
-  setTimeout(()=>window.print(), 350);
+// ─────────── gerar PDF (feito no servidor, com as assinaturas)
+async function gerarPdf(proto, b){
+  if(b.disabled) return;
+  const txt=b.textContent; b.disabled=true; b.textContent='Gerando PDF...';
+  // abre a aba já no clique para o navegador não bloquear
+  const w = window.open('', '_blank');
+  if(w) w.document.write('<p style="font-family:sans-serif;padding:20px">Gerando o PDF da troca '+proto+'...</p>');
+  try{
+    const r=await fetch(API_URL,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},
+      body:JSON.stringify({action:'gerarPdf',senha:SENHA,protocolo:proto})});
+    const j=await r.json();
+    if(!j.ok){ if(w) w.close(); alert(j.erro||'Não foi possível gerar o PDF.'); return; }
+    const d=DADOS.find(x=>x.protocolo===proto); if(d) d.documento=j.documento;
+    if(w) w.location.href=j.documento; else location.href=j.documento;
+  }catch(e){ if(w) w.close(); alert('Falha de conexão ao gerar o PDF.'); }
+  finally{ b.disabled=false; b.textContent=txt; }
 }
 
-// ─────────── CSV
-$('btCsv').addEventListener('click',()=>{
-  const cols=['protocolo','registro','nome','cpf','funcao','telefone','postoAtual','turnoAtual','escala',
-    'tipoTroca','modalidade','dataOrigem','dataDestino','periodoInicio','periodoFim','turnoDestino','postoDestino',
-    'colegaNome','colegaCpf','colegaTelefone','colegaPosto','motivo','status','dataAssinColega',
-    'motivoRecusaColega','documento','supervisor','observacao','dataDecisao'];
-  const L=filtradas();
-  const csv=[cols.join(';')].concat(L.map(d=>cols.map(c=>`"${String(d[c]||'').replace(/"/g,'""')}"`).join(';'))).join('\n');
-  const a=document.createElement('a');
-  a.href=URL.createObjectURL(new Blob(['\ufeff'+csv],{type:'text/csv;charset=utf-8'}));
-  a.download=`trocas-vegas-${new Date().toISOString().slice(0,10)}.csv`; a.click();
-});
+// ─────────── excluir ficha (toque duas vezes)
+async function excluirFicha(proto, b){
+  if(b.disabled) return;
+  if(!b.classList.contains('confirmar')){
+    b.classList.add('confirmar');
+    b.textContent='Tem certeza? Toque de novo';
+    clearTimeout(b._t);
+    b._t=setTimeout(()=>{ b.classList.remove('confirmar'); b.textContent='Excluir ficha'; },4000);
+    return;
+  }
+  clearTimeout(b._t);
+  b.disabled=true; b.textContent='Excluindo...';
+  try{
+    const r=await fetch(API_URL,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},
+      body:JSON.stringify({action:'excluir',senha:SENHA,protocolo:proto})});
+    const j=await r.json();
+    if(!j.ok){ alert(j.erro||'Não foi possível excluir.'); b.disabled=false;
+      b.classList.remove('confirmar'); b.textContent='Excluir ficha'; return; }
+    DADOS=DADOS.filter(x=>x.protocolo!==proto);
+    render();
+  }catch(e){ alert('Falha de conexão ao excluir.'); b.disabled=false;
+    b.classList.remove('confirmar'); b.textContent='Excluir ficha'; }
+}
 </script>
 </body>
 </html>

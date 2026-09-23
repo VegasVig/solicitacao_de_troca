@@ -193,6 +193,8 @@ function doPost(e) {
     if (d.action === 'assinarColega')  return _out(assinarColega_(d));
     if (d.action === 'recusarColega')  return _out(recusarColega_(d));
     if (d.action === 'decidir')        return _out(decidir_(d));
+    if (d.action === 'gerarPdf')       return _out(gerarPdf_(d));
+    if (d.action === 'excluir')        return _out(excluir_(d));
     return _out({ ok: false, erro: 'Ação desconhecida.' });
   } catch (err) { return _out({ ok: false, erro: String(err) }); }
 }
@@ -615,10 +617,15 @@ function assinaturaNaCelula_(cel, urlAssin, rotulo, nome) {
 }
 
 function rotaTexto_(o) {
-  if (o.tipoTroca === 'Dia por dia')     return dataBr_(o.dataOrigem) + '  →  ' + dataBr_(o.dataDestino);
-  if (o.tipoTroca === 'Turno por turno') return (o.turnoAtual || '—') + '  →  ' + (o.turnoDestino || '—');
-  return (o.postoAtual || '—') + ' (' + (o.cidadeAtual || '') + ')  →  ' +
-         (o.postoDestino || '—') + ' (' + (o.cidadeDestino || '') + ')';
+  if (o.tipoTroca === 'Dia por dia')
+    return 'De ' + dataBr_(o.dataOrigem) + ' (data de início) para ' + dataBr_(o.dataDestino) + ' (data de retorno)';
+  var txt;
+  if (o.tipoTroca === 'Turno por turno') txt = (o.turnoAtual || '—') + '  →  ' + (o.turnoDestino || '—');
+  else txt = (o.postoAtual || '—') + ' (' + (o.cidadeAtual || '') + ')  →  ' +
+             (o.postoDestino || '—') + ' (' + (o.cidadeDestino || '') + ')';
+  if (o.modalidade === 'Temporária' && o.periodoInicio)
+    txt += '\nDe ' + dataBr_(o.periodoInicio) + ' (data de início) para ' + dataBr_(o.periodoFim) + ' (data de retorno)';
+  return txt;
 }
 function dataBr_(iso) {
   const s = String(iso || '');
@@ -661,6 +668,45 @@ function decidir_(d) {
     try { doc = gerarDocumento_(sh, linha); } catch (e) { doc = ''; }
 
     return { ok: true, protocolo: d.protocolo, status: d.status, documento: doc };
+  } finally { lock.releaseLock(); }
+}
+
+// ───────────────────────── GERAR PDF (painel) ─────────────────────────
+function gerarPdf_(d) {
+  if (!_senhaOk(d.senha)) return { ok: false, erro: 'Senha incorreta.' };
+  if (!d.protocolo) return { ok: false, erro: 'Protocolo não informado.' };
+  const lock = LockService.getScriptLock();
+  lock.waitLock(30000);
+  try {
+    const sh = _ss().getSheetByName(ABA);
+    migrarColunas_(sh);
+    const linha = linhaPorProtocolo_(sh, d.protocolo);
+    if (linha < 0) return { ok: false, erro: 'Protocolo não encontrado.' };
+    const url = gerarDocumento_(sh, linha);
+    const id = idDeUrl_(url);
+    return { ok: true, protocolo: d.protocolo, documento: url,
+             download: id ? 'https://drive.google.com/uc?export=download&id=' + id : url };
+  } finally { lock.releaseLock(); }
+}
+
+// ───────────────────────── EXCLUIR FICHA (painel) ─────────────────────────
+function excluir_(d) {
+  if (!_senhaOk(d.senha)) return { ok: false, erro: 'Senha incorreta.' };
+  if (!d.protocolo) return { ok: false, erro: 'Protocolo não informado.' };
+  const lock = LockService.getScriptLock();
+  lock.waitLock(30000);
+  try {
+    const sh = _ss().getSheetByName(ABA);
+    const linha = linhaPorProtocolo_(sh, d.protocolo);
+    if (linha < 0) return { ok: false, erro: 'Protocolo não encontrado (talvez já tenha sido excluído).' };
+    const o = lerLinha_(sh, linha);
+    // manda para a lixeira do Drive o PDF e as assinaturas (dá para recuperar por 30 dias)
+    [o.documento, o.assinSolicitante, o.assinColega, o.assinSupervisor].forEach(function (u) {
+      const id = idDeUrl_(u);
+      if (id) { try { DriveApp.getFileById(id).setTrashed(true); } catch (e) {} }
+    });
+    sh.deleteRow(linha);
+    return { ok: true, protocolo: d.protocolo };
   } finally { lock.releaseLock(); }
 }
 
