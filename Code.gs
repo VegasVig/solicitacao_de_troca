@@ -618,7 +618,7 @@ function assinaturaNaCelula_(cel, urlAssin, rotulo, nome) {
 
 function rotaTexto_(o) {
   if (o.tipoTroca === 'Dia por dia')
-    return 'De ' + dataBr_(o.dataOrigem) + ' (data de início) para ' + dataBr_(o.dataDestino) + ' (data de retorno)';
+    return 'De ' + dataBr_(o.dataDestino) + ' (data de início) para ' + dataBr_(o.dataOrigem) + ' (data de retorno)';
   var txt;
   if (o.tipoTroca === 'Turno por turno') txt = (o.turnoAtual || '—') + '  →  ' + (o.turnoDestino || '—');
   else txt = (o.postoAtual || '—') + ' (' + (o.cidadeAtual || '') + ')  →  ' +
@@ -630,8 +630,8 @@ function rotaTexto_(o) {
 function dataBr_(iso) {
   const s = String(iso || '');
   if (!s) return '—';
-  if (s.indexOf('/') > 0) return s;
-  const p = s.split('-');
+  if (s.indexOf('/') > 0) return s.split(' ')[0];   // tira o "00:00" que a planilha acrescenta
+  const p = s.split(' ')[0].split('-');
   return p.length === 3 ? p[2] + '/' + p[1] + '/' + p[0] : s;
 }
 
@@ -722,4 +722,11 @@ function listar_() {
     if (!o.status) o.status = ST_PENDENTE; // linhas antigas do fluxo v1
     return o;
   }).reverse();
+}
+
+/** Rode uma vez pelo editor para liberar as permissões de Docs e Drive. */
+function autorizar() {
+  const doc = DocumentApp.create('teste-autorizacao');
+  DriveApp.getFileById(doc.getId()).setTrashed(true);
+  return 'Permissões liberadas';
 }

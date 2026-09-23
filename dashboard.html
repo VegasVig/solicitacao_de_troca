@@ -302,7 +302,7 @@ function ranking(id,pares){
 }
 
 function rotaDe(d){
-  if(d.tipoTroca==='Dia por dia')     return [d.dataOrigem||'—', d.dataDestino||'—'];
+  if(d.tipoTroca==='Dia por dia')     return [br(d.dataDestino), br(d.dataOrigem)];
   if(d.tipoTroca==='Turno por turno') return [d.turnoAtual||'—', d.turnoDestino||'—'];
   return [d.postoAtual||'—', d.postoDestino||'—'];
 }
@@ -386,7 +386,7 @@ function sigBloco(url,rot){
   return `<div class="assin"><img src="${t}" alt="assinatura ${rot}" loading="lazy"><span>${rot}</span></div>`;
 }
 function esc(s){ return String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
-function br(iso){ if(!iso) return '—'; if(iso.indexOf('/')>0) return iso; const p=iso.split('-'); return p.length===3?`${p[2]}/${p[1]}/${p[0]}`:iso; }
+function br(iso){ if(!iso) return '—'; iso=String(iso).split(' ')[0]; if(iso.indexOf('/')>0) return iso; const p=iso.split('-'); return p.length===3?`${p[2]}/${p[1]}/${p[0]}`:iso; }
 
 // ─────────── assinatura supervisor
 function padAssinatura(id){
