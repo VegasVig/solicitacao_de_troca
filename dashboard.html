@@ -302,7 +302,7 @@ function ranking(id,pares){
 }
 
 function rotaDe(d){
-  if(d.tipoTroca==='Dia por dia')     return [br(d.dataDestino), br(d.dataOrigem)];
+  if(d.tipoTroca==='Dia por dia')     return [br(d.dataOrigem), br(d.dataDestino)];
   if(d.tipoTroca==='Turno por turno') return [d.turnoAtual||'—', d.turnoDestino||'—'];
   return [d.postoAtual||'—', d.postoDestino||'—'];
 }

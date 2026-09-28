@@ -146,6 +146,7 @@ function setup() {
 
 /** Acrescenta as colunas do fluxo novo numa planilha que já tem dados. Seguro de rodar várias vezes. */
 function migrarColunas_(sh) {
+  garantirColunas_(sh);
   const atuais = sh.getRange(1, 1, 1, Math.max(sh.getLastColumn(), HEADERS.length)).getValues()[0];
   var mudou = false;
   for (var i = 0; i < HEADERS.length; i++) {
@@ -157,6 +158,12 @@ function migrarColunas_(sh) {
   }
   if (mudou) sh.getRange(1, 1, sh.getMaxRows(), HEADERS.length).setNumberFormat('@');
   return mudou;
+}
+
+/** A planilha precisa ter colunas suficientes: o Sheets não deixa ler/gravar colunas que não existem. */
+function garantirColunas_(sh) {
+  const falta = HEADERS.length - sh.getMaxColumns();
+  if (falta > 0) sh.insertColumnsAfter(sh.getMaxColumns(), falta);
 }
 
 function _ss() {
@@ -332,6 +339,7 @@ function criar_(d) {
 function duplicada_(sh, d) {
   const n = sh.getLastRow();
   if (n < 2) return null;
+  garantirColunas_(sh);
   const v = sh.getRange(2, 1, n - 1, HEADERS.length).getValues();
   const alvo = soNum_(d.cpf);
   const abertos = [ST_PENDENTE, ST_AGUARDA];
@@ -463,6 +471,7 @@ function linhaPorProtocolo_(sh, proto) {
   return -1;
 }
 function lerLinha_(sh, linha) {
+  garantirColunas_(sh);
   const r = sh.getRange(linha, 1, 1, HEADERS.length).getValues()[0];
   const o = {};
   CHAVES.forEach(function (k, i) { o[k] = _txt(r[i]); });
@@ -648,7 +657,7 @@ function assinaturaNaCelula_(cel, urlAssin, rotulo, nome) {
 
 function rotaTexto_(o) {
   if (o.tipoTroca === 'Dia por dia')
-    return 'De ' + dataBr_(o.dataDestino) + ' (data de início) para ' + dataBr_(o.dataOrigem) + ' (data de retorno)';
+    return 'Troca do dia ' + dataBr_(o.dataOrigem) + ' pelo dia ' + dataBr_(o.dataDestino);
   var txt;
   if (o.tipoTroca === 'Turno por turno') txt = (o.turnoAtual || '—') + '  →  ' + (o.turnoDestino || '—');
   else txt = (o.postoAtual || '—') + ' (' + (o.cidadeAtual || '') + ')  →  ' +
@@ -755,6 +764,7 @@ function excluir_(d) {
 function listar_() {
   const sh = _ss().getSheetByName(ABA);
   if (!sh || sh.getLastRow() < 2) return [];
+  garantirColunas_(sh);
   const largura = Math.max(sh.getLastColumn(), HEADERS.length);
   const v = sh.getRange(2, 1, sh.getLastRow() - 1, largura).getValues();
   return v.filter(function (r) { return r[0]; }).map(function (r) {
