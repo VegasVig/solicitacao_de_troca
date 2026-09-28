@@ -55,6 +55,25 @@ header.topo .acoes{margin-left:auto;display:flex;gap:8px;flex-wrap:wrap}
 .kpi .l{font-size:12px;letter-spacing:.16em;text-transform:uppercase;color:var(--cinza);margin-top:7px}
 .kpi.p .v{color:var(--alerta)} .kpi.a .v{color:var(--ok)} .kpi.r .v{color:#FF9A9D}
 
+/* abas */
+.abas{display:flex;gap:10px;margin-bottom:12px;flex-wrap:wrap}
+.aba{flex:1;min-width:200px;display:flex;align-items:center;justify-content:center;gap:10px;
+  padding:15px 16px;border-radius:14px;border:1px solid var(--borda);background:rgba(20,20,20,.7);
+  color:var(--cinza);cursor:pointer;font-family:'Orbitron',sans-serif;font-size:13px;font-weight:700;
+  letter-spacing:.12em;text-transform:uppercase;transition:.15s}
+.aba:hover{border-color:rgba(192,192,192,.45);color:var(--prata-claro)}
+.aba .cont{min-width:28px;padding:3px 9px;border-radius:99px;font-size:12px;background:rgba(0,0,0,.5);border:1px solid var(--borda)}
+.aba.on{color:#fff}
+.aba.on[data-aba="autorizar"]{border-color:var(--alerta);background:rgba(245,165,36,.10)}
+.aba.on[data-aba="autorizar"] .cont{color:var(--alerta);border-color:rgba(245,165,36,.5)}
+.aba.on[data-aba="autorizadas"]{border-color:var(--ok);background:rgba(62,207,142,.10)}
+.aba.on[data-aba="autorizadas"] .cont{color:var(--ok);border-color:rgba(62,207,142,.5)}
+.aba.sec{flex:0 0 auto;min-width:0;font-size:11px;padding:15px 14px}
+.aba.on[data-aba="recusadas"]{border-color:var(--erro);background:rgba(229,72,77,.10)}
+.aba.on[data-aba="recusadas"] .cont{color:#FF9A9D;border-color:rgba(229,72,77,.5)}
+.aba:focus-visible{outline:2px solid var(--prata);outline-offset:2px}
+@media(max-width:520px){.aba{min-width:0;flex:1 1 45%}.aba.sec{flex:1 1 100%}}
+
 /* filtros */
 .filtros{display:grid;grid-template-columns:2fr 1fr 1fr 1fr;gap:10px;padding:14px;margin-bottom:16px}
 @media(max-width:820px){.filtros{grid-template-columns:1fr 1fr}}
@@ -154,19 +173,25 @@ textarea{min-height:80px;resize:vertical}
 
   <div class="kpis" id="kpis"></div>
 
+  <div class="abas" role="tablist">
+    <button class="aba on" data-aba="autorizar" role="tab">A autorizar <span class="cont" id="cAutorizar">0</span></button>
+    <button class="aba" data-aba="autorizadas" role="tab">Já autorizadas <span class="cont" id="cAutorizadas">0</span></button>
+    <button class="aba sec" data-aba="recusadas" role="tab">Recusadas <span class="cont" id="cRecusadas">0</span></button>
+  </div>
+
   <div class="filtros card">
     <input id="fBusca" placeholder="Buscar por nome, protocolo, posto, colega...">
-    <select id="fStatus"><option value="">Todas as situações</option><option>Aguardando colega</option><option>Pendente</option><option>Aprovada</option><option>Recusada</option><option>Recusada pelo colega</option></select>
+    <select id="fStatus"></select>
     <select id="fTipo"><option value="">Todos os tipos</option><option>Dia por dia</option><option>Turno por turno</option><option>Posto por posto</option></select>
     <select id="fMod"><option value="">Temporária e definitiva</option><option>Temporária</option><option>Definitiva</option></select>
   </div>
 
-  <div class="duplo">
+  <div id="lista"></div>
+
+  <div class="duplo" style="margin-top:24px">
     <div class="painel card"><h3>Postos com mais pedidos</h3><div id="rkPostos"></div></div>
     <div class="painel card"><h3>Quem mais solicita</h3><div id="rkPessoas"></div></div>
   </div>
-
-  <div id="lista"></div>
 </div>
 
 <!-- MODAL DECISÃO -->
@@ -235,10 +260,31 @@ async function recarregar(){
 $('btRecarregar').addEventListener('click', recarregar);
 ['fBusca','fStatus','fTipo','fMod'].forEach(id=>$(id).addEventListener('input', render));
 
+// ─────────── abas
+const ABAS = {
+  autorizar:   { status:['Pendente','Aguardando colega'], vazio:'Nenhuma troca esperando autorização. Tudo em dia.' },
+  autorizadas: { status:['Aprovada'],                     vazio:'Nenhuma troca autorizada ainda.' },
+  recusadas:   { status:['Recusada','Recusada pelo colega'], vazio:'Nenhuma troca recusada.' }
+};
+let ABA = 'autorizar';
+function montarFiltroStatus(){
+  const st = ABAS[ABA].status;
+  $('fStatus').innerHTML = '<option value="">Todas desta aba</option>' + st.map(s=>`<option>${s}</option>`).join('');
+  $('fStatus').style.display = st.length>1 ? '' : 'none';
+}
+document.querySelectorAll('.aba').forEach(b=>b.addEventListener('click',()=>{
+  ABA = b.dataset.aba;
+  document.querySelectorAll('.aba').forEach(x=>{ x.classList.toggle('on', x===b); x.setAttribute('aria-selected', x===b); });
+  montarFiltroStatus(); render();
+}));
+montarFiltroStatus();
+
 // ─────────── render
 function filtradas(){
   const q=$('fBusca').value.trim().toLowerCase(), st=$('fStatus').value, tp=$('fTipo').value, md=$('fMod').value;
-  return DADOS.filter(d=>{
+  const daAba = ABAS[ABA].status;
+  const L = DADOS.filter(d=>{
+    if(daAba.indexOf(d.status)<0) return false;
     if(st && d.status!==st) return false;
     if(tp && d.tipoTroca!==tp) return false;
     if(md && d.modalidade!==md) return false;
@@ -246,6 +292,9 @@ function filtradas(){
       if(alvo.indexOf(q)<0) return false; }
     return true;
   });
+  // na aba "A autorizar", as que já podem ser decididas vêm primeiro
+  if(ABA==='autorizar') L.sort((a,b)=>(a.status==='Pendente'?0:1)-(b.status==='Pendente'?0:1));
+  return L;
 }
 
 function render(){
@@ -269,7 +318,15 @@ function render(){
   ranking('rkPostos', contar(DADOS,'postoAtual'));
   ranking('rkPessoas', contar(DADOS,'nome'));
 
-  if(!L.length){ $('lista').innerHTML='<div class="vazio card" style="padding:50px">Nenhuma solicitação com esses filtros.</div>'; return; }
+  $('cAutorizar').textContent   = pend + agu;
+  $('cAutorizadas').textContent = apr;
+  $('cRecusadas').textContent   = DADOS.filter(d=>ABAS.recusadas.status.indexOf(d.status)>=0).length;
+
+  if(!L.length){
+    const filtrando = $('fBusca').value.trim() || $('fStatus').value || $('fTipo').value || $('fMod').value;
+    $('lista').innerHTML=`<div class="vazio card" style="padding:50px">${filtrando?'Nenhuma solicitação com esses filtros nesta aba.':ABAS[ABA].vazio}</div>`;
+    return;
+  }
   $('lista').innerHTML = L.map(cardItem).join('');
   document.querySelectorAll('[data-acao]').forEach(b=>b.addEventListener('click',async ()=>{
     const p=b.dataset.proto, a=b.dataset.acao;
