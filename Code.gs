@@ -30,7 +30,9 @@ const HEADERS = [
   'Motivo','Assin Solicitante','Assin Colega',
   'Status','Supervisor','Assin Supervisor','Observacao Supervisor','Data Decisao',
   // ─── novos campos do fluxo de duas etapas ───
-  'Token Colega','Data Assin Colega','Documento','Motivo Recusa Colega'
+  'Token Colega','Data Assin Colega','Documento','Motivo Recusa Colega',
+  // ─── v3: troca sem colega + período data por data ───
+  'Sem Colega','Datas'
 ];
 
 // chaves em JS na mesma ordem dos HEADERS
@@ -39,7 +41,8 @@ const CHAVES = ['protocolo','registro','nome','cpf','funcao','telefone',
   'periodoInicio','periodoFim','turnoDestino','cidadeDestino','postoDestino',
   'colegaNome','colegaCpf','colegaTelefone','colegaCidade','colegaPosto','motivo','assinSolicitante','assinColega',
   'status','supervisor','assinSupervisor','observacao','dataDecisao',
-  'token','dataAssinColega','documento','motivoRecusaColega'];
+  'token','dataAssinColega','documento','motivoRecusaColega',
+  'semColega','datas'];
 
 const C_STATUS    = 28; // coluna 1-based do Status
 const C_TOKEN     = 33;
@@ -181,7 +184,7 @@ function doGet(e) {
       case 'listar':
         if (!_senhaOk(p.senha)) return _out({ ok: false, erro: 'Senha incorreta.' });
         return _out({ ok: true, dados: listar_() });
-      default: return _out({ ok: true, servico: 'Trocas Vegas', versao: '2.0' });
+      default: return _out({ ok: true, servico: 'Trocas Vegas', versao: '3.0' });
     }
   } catch (err) { return _out({ ok: false, erro: String(err) }); }
 }
@@ -246,20 +249,32 @@ function lerPostos_() {
 
 // ───────────────────────── CRIAR (etapa 1) ─────────────────────────
 function criar_(d) {
+  const sem = d.semColega === true || String(d.semColega) === 'true';
   const obrig = ['nome', 'cpf', 'funcao', 'telefone', 'cidadeAtual', 'postoAtual', 'turnoAtual',
-                 'tipoTroca', 'modalidade', 'motivo', 'colegaNome', 'colegaCpf', 'colegaTelefone',
-                 'colegaCidade', 'colegaPosto'];
+                 'tipoTroca', 'modalidade', 'motivo'];
+  if (!sem) obrig.push('colegaNome', 'colegaCpf', 'colegaTelefone', 'colegaCidade', 'colegaPosto');
   for (var i = 0; i < obrig.length; i++) {
     if (!String(d[obrig[i]] || '').trim()) return { ok: false, erro: 'Campo obrigatório ausente: ' + obrig[i] };
   }
   if (!cpfValido_(d.cpf))       return { ok: false, erro: 'CPF do solicitante inválido.' };
-  if (!cpfValido_(d.colegaCpf)) return { ok: false, erro: 'CPF do colega inválido.' };
-  if (soNum_(d.cpf) === soNum_(d.colegaCpf)) return { ok: false, erro: 'O CPF do colega não pode ser igual ao do solicitante.' };
-  if (soNum_(d.colegaTelefone).length < 10) return { ok: false, erro: 'Informe o WhatsApp do colega com DDD — é por ele que o link de assinatura vai.' };
+  if (sem) {
+    d.colegaNome = ''; d.colegaCpf = ''; d.colegaTelefone = ''; d.colegaCidade = ''; d.colegaPosto = '';
+  } else {
+    if (!cpfValido_(d.colegaCpf)) return { ok: false, erro: 'CPF do colega inválido.' };
+    if (soNum_(d.cpf) === soNum_(d.colegaCpf)) return { ok: false, erro: 'O CPF do colega não pode ser igual ao do solicitante.' };
+    if (soNum_(d.colegaTelefone).length < 10) return { ok: false, erro: 'Informe o WhatsApp do colega com DDD — é por ele que o link de assinatura vai.' };
+  }
   if (!d.assinSolicitante) return { ok: false, erro: 'Assinatura do solicitante é obrigatória.' };
   if (String(d.motivo).trim().length < 15) return { ok: false, erro: 'Descreva o motivo com mais detalhe (mínimo 15 caracteres).' };
-  if (d.modalidade === 'Temporária' && !(d.periodoInicio && d.periodoFim))
-    return { ok: false, erro: 'Troca temporária exige período (início e fim).' };
+  // período data por data: lista de dias ISO separados por vírgula
+  const datas = String(d.datas || '').split(',').map(function (x) { return x.trim(); })
+    .filter(function (x) { return /^\d{4}-\d{2}-\d{2}$/.test(x); })
+    .filter(function (x, i, a) { return a.indexOf(x) === i; }).sort();
+  if (d.modalidade === 'Temporária') {
+    if (!datas.length && !(d.periodoInicio && d.periodoFim))
+      return { ok: false, erro: 'Troca temporária exige pelo menos um dia.' };
+    if (datas.length) { d.periodoInicio = datas[0]; d.periodoFim = datas[datas.length - 1]; }
+  }
   if (d.tipoTroca === 'Posto por posto' && !(d.cidadeDestino && d.postoDestino))
     return { ok: false, erro: 'Troca de posto exige cidade e posto de destino.' };
 
@@ -276,7 +291,7 @@ function criar_(d) {
     const protocolo = novoProtocolo_(sh);
     const agora = _agora();
     const aSol = salvarAssinatura_(pastaAssinaturas_(), d.assinSolicitante, protocolo + '-solicitante');
-    const token = gerarToken_();
+    const token = sem ? '' : gerarToken_();
 
     sh.appendRow([
       protocolo, agora, d.nome, formataCpf_(d.cpf), d.funcao || '', d.telefone,
@@ -285,9 +300,24 @@ function criar_(d) {
       d.periodoInicio || '', d.periodoFim || '', d.turnoDestino || '', d.cidadeDestino || '', d.postoDestino || '',
       d.colegaNome, formataCpf_(d.colegaCpf), d.colegaTelefone || '', d.colegaCidade, d.colegaPosto,
       d.motivo, aSol, '',
-      ST_AGUARDA, '', '', '', '',
-      token, '', '', ''
+      sem ? ST_PENDENTE : ST_AGUARDA, '', '', '', '',
+      token, '', '', '',
+      sem ? 'Sim' : '', datas.join(',')
     ]);
+
+    if (sem) {
+      // sem colega: vai direto para a supervisão, com o documento só com a assinatura do solicitante
+      var doc = '';
+      try { doc = gerarDocumento_(sh, sh.getLastRow()); } catch (e) { doc = ''; }
+      const msg = 'Troca ' + protocolo + ' (sem colega) de ' + encodeURIComponent(d.nome) +
+                  '%0APosto: ' + encodeURIComponent(d.postoAtual + ' / ' + d.cidadeAtual) +
+                  '%0AAguardando aprovação da supervisão.';
+      return {
+        ok: true, protocolo: protocolo, registro: agora, semColega: true,
+        status: ST_PENDENTE, documento: doc,
+        whatsapp: 'https://wa.me/' + WHATS_SUPERVISAO + '?text=' + msg
+      };
+    }
 
     return {
       ok: true,
@@ -407,7 +437,7 @@ function consultar_(token) {
     cidadeAtual: o.cidadeAtual, postoAtual: o.postoAtual, turnoAtual: o.turnoAtual, escala: o.escala,
     tipoTroca: o.tipoTroca, modalidade: o.modalidade,
     dataOrigem: o.dataOrigem, dataDestino: o.dataDestino,
-    periodoInicio: o.periodoInicio, periodoFim: o.periodoFim,
+    periodoInicio: o.periodoInicio, periodoFim: o.periodoFim, datas: o.datas,
     turnoDestino: o.turnoDestino, cidadeDestino: o.cidadeDestino, postoDestino: o.postoDestino,
     colegaNome: o.colegaNome, colegaCpfMascarado: mascaraCpf_(o.colegaCpf),
     colegaCidade: o.colegaCidade, colegaPosto: o.colegaPosto,
@@ -531,8 +561,8 @@ function gerarDocumento_(sh, linha) {
       .setFontSize(9).setBold(false);
 
   const rota = rotaTexto_(o);
-  const periodo = o.modalidade === 'Temporária' && o.periodoInicio
-    ? dataBr_(o.periodoInicio) + ' a ' + dataBr_(o.periodoFim) : 'Definitiva';
+  const periodo = periodoTexto_(o);
+  const sem = o.semColega === 'Sim';
 
   const linhas = [
     ['Solicitante', o.nome + (o.cpf ? '  —  CPF ' + o.cpf : '')],
@@ -542,11 +572,11 @@ function gerarDocumento_(sh, linha) {
     ['Tipo de troca', o.tipoTroca],
     ['Modalidade', o.modalidade + (o.modalidade === 'Temporária' ? '  (' + periodo + ')' : '')],
     ['Troca solicitada', rota],
-    ['Colega envolvido', o.colegaNome + (o.colegaCpf ? '  —  CPF ' + o.colegaCpf : '')],
-    ['Posto do colega', o.colegaPosto + ' (' + o.colegaCidade + ')'],
-    ['Motivo', o.motivo],
-    ['Assinatura do colega em', o.dataAssinColega || '—']
+    ['Colega envolvido', sem ? 'Sem colega — troca individual' : o.colegaNome + (o.colegaCpf ? '  —  CPF ' + o.colegaCpf : '')]
   ];
+  if (!sem) linhas.push(['Posto do colega', o.colegaPosto + ' (' + o.colegaCidade + ')']);
+  linhas.push(['Motivo', o.motivo]);
+  if (!sem) linhas.push(['Assinatura do colega em', o.dataAssinColega || '—']);
   if (o.status === 'Aprovada' || o.status === 'Recusada') {
     linhas.push(['Decisão da supervisão', o.status + (o.supervisor ? ' por ' + o.supervisor : '') +
                                           (o.dataDecisao ? ' em ' + o.dataDecisao : '')]);
@@ -563,19 +593,19 @@ function gerarDocumento_(sh, linha) {
   }
 
   body.appendParagraph('');
-  body.appendParagraph('Declaramos que a troca acima foi combinada entre as partes e que ela só passa a valer após a aprovação da supervisão de postos.')
+  body.appendParagraph(sem
+      ? 'Declaro que as informações acima são verdadeiras e que a troca só passa a valer após a aprovação da supervisão de postos.'
+      : 'Declaramos que a troca acima foi combinada entre as partes e que ela só passa a valer após a aprovação da supervisão de postos.')
       .setFontSize(9).setItalic(true);
   body.appendParagraph('');
 
   // assinaturas lado a lado
-  const temSup = !!o.assinSupervisor;
-  const celulas = temSup ? [['', '', '']] : [['', '']];
-  const tSig = body.appendTable(celulas);
+  const sigs = [[o.assinSolicitante, 'Solicitante', o.nome]];
+  if (!sem) sigs.push([o.assinColega, 'Colega envolvido', o.colegaNome]);
+  if (o.assinSupervisor) sigs.push([o.assinSupervisor, 'Supervisão de postos', o.supervisor || '']);
+  const tSig = body.appendTable([sigs.map(function () { return ''; })]);
   tSig.setBorderWidth(0);
-
-  assinaturaNaCelula_(tSig.getRow(0).getCell(0), o.assinSolicitante, 'Solicitante', o.nome);
-  assinaturaNaCelula_(tSig.getRow(0).getCell(1), o.assinColega, 'Colega envolvido', o.colegaNome);
-  if (temSup) assinaturaNaCelula_(tSig.getRow(0).getCell(2), o.assinSupervisor, 'Supervisão de postos', o.supervisor || '');
+  sigs.forEach(function (sg, i) { assinaturaNaCelula_(tSig.getRow(0).getCell(i), sg[0], sg[1], sg[2]); });
 
   body.appendParagraph('')
       .appendText('Documento gerado eletronicamente em ' + _agora() + ' · Vegas Vigilância e Segurança')
@@ -623,9 +653,20 @@ function rotaTexto_(o) {
   if (o.tipoTroca === 'Turno por turno') txt = (o.turnoAtual || '—') + '  →  ' + (o.turnoDestino || '—');
   else txt = (o.postoAtual || '—') + ' (' + (o.cidadeAtual || '') + ')  →  ' +
              (o.postoDestino || '—') + ' (' + (o.cidadeDestino || '') + ')';
-  if (o.modalidade === 'Temporária' && o.periodoInicio)
+  if (o.modalidade === 'Temporária' && o.datas)
+    txt += '\nDias: ' + periodoTexto_(o);
+  else if (o.modalidade === 'Temporária' && o.periodoInicio)
     txt += '\nDe ' + dataBr_(o.periodoInicio) + ' (data de início) para ' + dataBr_(o.periodoFim) + ' (data de retorno)';
   return txt;
+}
+
+/** Texto do período: lista de dias (novo) ou intervalo início–fim (pedidos antigos). */
+function periodoTexto_(o) {
+  if (o.modalidade !== 'Temporária') return 'Definitiva';
+  const lista = String(o.datas || '').split(',').map(function (x) { return x.trim(); }).filter(String);
+  if (lista.length) return lista.map(dataBr_).join(', ');
+  if (o.periodoInicio) return dataBr_(o.periodoInicio) + ' a ' + dataBr_(o.periodoFim);
+  return '—';
 }
 function dataBr_(iso) {
   const s = String(iso || '');

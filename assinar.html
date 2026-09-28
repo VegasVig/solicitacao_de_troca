@@ -244,7 +244,10 @@ function preencher(d){
   $('c-registro').textContent = 'Aberta em ' + d.registro;
   const [de,para] = rotaDe(d);
   $('c-de').textContent = de; $('c-para').textContent = para;
-  const per = d.modalidade==='Temporária' && d.periodoInicio ? `${br(d.periodoInicio)} a ${br(d.periodoFim)}` : 'Definitiva';
+  const lista = String(d.datas||'').split(',').map(x=>x.trim()).filter(Boolean);
+  const per = d.modalidade!=='Temporária' ? 'Definitiva'
+            : lista.length ? lista.map(br).join(', ')
+            : d.periodoInicio ? `${br(d.periodoInicio)} a ${br(d.periodoFim)}` : '—';
   $('c-grade').innerHTML = [
     ['Quem pediu', d.nome],
     ['Cargo', d.funcao||'—'],

@@ -321,7 +321,8 @@ function linkColega(token){
 }
 function cardItem(d){
   const [de,para]=rotaDe(d);
-  const per = d.modalidade==='Temporária' && d.periodoInicio ? `${br(d.periodoInicio)} a ${br(d.periodoFim)}` : '—';
+  const per = periodoDe(d);
+  const sem = d.semColega==='Sim';
   const doc = d.documento
     ? `<a class="bt doc" href="${esc(d.documento)}" target="_blank" rel="noopener"
          style="text-decoration:none;display:inline-flex;align-items:center">Abrir documento assinado</a>` : '';
@@ -348,6 +349,7 @@ function cardItem(d){
       ${tagStatus(d.status)}
       <span class="tag n">${esc(d.tipoTroca)}</span>
       <span class="tag n">${esc(d.modalidade)}</span>
+      ${sem?'<span class="tag n">Sem colega</span>':''}
       <span class="quando">${esc(d.registro)}</span>
     </div>
     <div class="rota"><span class="de">${esc(de.length===10&&de.includes('-')?br(de):de)}</span>
@@ -358,9 +360,11 @@ function cardItem(d){
       <div class="dado"><b>Função / escala</b>${esc(d.funcao||'—')} · ${esc(d.escala||'—')}</div>
       <div class="dado"><b>Posto atual</b>${esc(d.postoAtual)}</div>
       <div class="dado"><b>Turno atual</b>${esc(d.turnoAtual)}</div>
-      <div class="dado"><b>Solicita a</b>${esc(d.colegaNome)}${d.colegaCpf?'<br>CPF '+esc(d.colegaCpf):''}${d.colegaTelefone?'<br>'+esc(d.colegaTelefone):''}</div>
-      <div class="dado"><b>Posto do colega</b>${esc(d.colegaPosto||'—')}</div>
-      <div class="dado"><b>Período</b>${per}</div>
+      ${sem
+        ? `<div class="dado"><b>Solicita a</b>Sem colega (troca individual)</div>`
+        : `<div class="dado"><b>Solicita a</b>${esc(d.colegaNome)}${d.colegaCpf?'<br>CPF '+esc(d.colegaCpf):''}${d.colegaTelefone?'<br>'+esc(d.colegaTelefone):''}</div>
+      <div class="dado"><b>Posto do colega</b>${esc(d.colegaPosto||'—')}</div>`}
+      <div class="dado"><b>${d.datas?'Dias':'Período'}</b>${esc(per)}</div>
       <div class="dado"><b>Contato</b>${esc(d.telefone)}</div>
       ${d.dataAssinColega?`<div class="dado"><b>Colega assinou em</b>${esc(d.dataAssinColega)}</div>`:''}
       ${(d.status==='Aprovada'||d.status==='Recusada')?`<div class="dado"><b>Decidido por</b>${esc(d.supervisor||'—')} · ${esc(d.dataDecisao||'')}</div>`:''}
@@ -380,6 +384,12 @@ function cardItem(d){
     </div>
     <div class="botoes">${botoes}</div>
   </div>`;
+}
+function periodoDe(d){
+  if(d.modalidade!=='Temporária') return '—';
+  const lista = String(d.datas||'').split(',').map(x=>x.trim()).filter(Boolean);
+  if(lista.length) return lista.map(br).join(', ');
+  return d.periodoInicio ? `${br(d.periodoInicio)} a ${br(d.periodoFim)}` : '—';
 }
 function sigBloco(url,rot){
   const t=thumb(url); if(!t) return '';

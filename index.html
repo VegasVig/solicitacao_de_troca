@@ -76,6 +76,21 @@ textarea{min-height:96px;resize:vertical}
 
 .oculto{display:none}
 
+/* lista de dias (período data por data) */
+.add-data{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:10px}
+.add-data input{min-width:0}
+.btn-add{border:1px solid var(--prata);background:rgba(192,192,192,.1);color:var(--prata-claro);
+  border-radius:10px;padding:0 16px;font-family:inherit;font-size:15px;font-weight:700;
+  letter-spacing:.06em;text-transform:uppercase;cursor:pointer;white-space:nowrap}
+.btn-add:hover{background:rgba(192,192,192,.18)}
+.chips{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}
+.chip{display:inline-flex;align-items:center;gap:8px;padding:7px 8px 7px 13px;border-radius:99px;
+  border:1px solid var(--prata);background:rgba(192,192,192,.09);font-weight:600;font-size:15px}
+.chip button{width:24px;height:24px;border-radius:50%;border:none;background:rgba(0,0,0,.5);
+  color:var(--prata-claro);font-size:15px;line-height:1;cursor:pointer;padding:0}
+.chip button:hover{background:var(--erro);color:#fff}
+.chips .vazio-datas{font-size:14px;color:var(--cinza)}
+
 .sigbox{border:1px solid var(--borda);border-radius:12px;background:#0f0f0f;overflow:hidden}
 .sigbox canvas{display:block;width:100%;height:170px;touch-action:none;cursor:crosshair}
 .sigbar{display:flex;justify-content:space-between;align-items:center;padding:8px 12px;
@@ -181,7 +196,7 @@ footer{text-align:center;color:#5a5a5a;font-size:12px;letter-spacing:.16em;
     <h2><span class="n">2</span>O que você quer trocar</h2>
     <div class="opts" id="g-tipo">
       <label class="opt"><input type="radio" name="tipo" value="Dia por dia">
-        <span><span class="t">Dia por dia</span><br><span class="d">Troco um dia da minha escala com outro colega.</span></span></label>
+        <span><span class="t">Dia por dia</span><br><span class="d">Troco um dia da minha escala (com um colega ou sozinho).</span></span></label>
       <label class="opt"><input type="radio" name="tipo" value="Turno por turno">
         <span><span class="t">Turno por turno</span><br><span class="d">Passo do meu turno para outro turno.</span></span></label>
       <label class="opt"><input type="radio" name="tipo" value="Posto por posto">
@@ -199,10 +214,13 @@ footer{text-align:center;color:#5a5a5a;font-size:12px;letter-spacing:.16em;
         <span><span class="t">Definitiva</span><br><span class="d">Passa a ser a minha nova escala.</span></span></label>
     </div>
     <div id="bloco-periodo" style="margin-top:14px">
-      <div class="linha">
-        <div class="campo"><label>Início do período <span class="obrig">*</span></label><input type="date" id="periodoInicio"></div>
-        <div class="campo"><label>Fim do período <span class="obrig">*</span></label><input type="date" id="periodoFim"></div>
+      <label>Dias em que a troca vale <span class="obrig">*</span></label>
+      <div class="add-data">
+        <input type="date" id="novaData">
+        <button type="button" class="btn-add" id="btAddData">+ Adicionar dia</button>
       </div>
+      <div class="chips" id="listaDatas"></div>
+      <div class="dica">Escolha o dia e toque em <b>Adicionar dia</b>. Repita para cada dia da troca.</div>
     </div>
   </div>
 
@@ -238,6 +256,13 @@ footer{text-align:center;color:#5a5a5a;font-size:12px;letter-spacing:.16em;
   <!-- 5 -->
   <div class="card">
     <h2><span class="n">5</span>Solicita a quem</h2>
+    <div class="opts" id="g-colega" style="margin-bottom:16px">
+      <label class="opt"><input type="radio" name="colega" value="com" checked>
+        <span><span class="t">Com colega</span><br><span class="d">Um colega assume o meu lugar ou troca comigo. Ele também assina.</span></span></label>
+      <label class="opt"><input type="radio" name="colega" value="sem">
+        <span><span class="t">Sem colega</span><br><span class="d">Só mudo o meu dia. Não troco com ninguém — vai direto para a supervisão.</span></span></label>
+    </div>
+    <div id="bloco-colega">
     <div class="campo"><label>Nome do colega envolvido <span class="obrig">*</span></label>
       <input id="colegaNome" placeholder="Quem vai assumir / trocar com você">
       <div class="dica">É o colega que fica no seu lugar (ou com quem você troca).</div></div>
@@ -256,6 +281,7 @@ footer{text-align:center;color:#5a5a5a;font-size:12px;letter-spacing:.16em;
         <select id="colegaPosto" disabled><option value="">Escolha a cidade primeiro</option></select></div>
     </div>
     <div class="dica" style="margin-top:-4px">Onde o colega trabalha hoje.</div>
+    </div>
   </div>
 
   <!-- 6 -->
@@ -278,7 +304,7 @@ footer{text-align:center;color:#5a5a5a;font-size:12px;letter-spacing:.16em;
     </div>
     <div class="dica">Assine com o dedo (no celular) ou com o mouse.</div>
 
-    <div class="aviso" style="margin:16px 0 0">
+    <div class="aviso" id="aviso-colega" style="margin:16px 0 0">
       <b>O colega assina depois, no celular dele.</b> Ao enviar, o sistema gera um link
       exclusivo desta solicitação. Você manda esse link para o colega; quando ele assinar,
       o documento com as duas assinaturas vai automaticamente para a supervisão.
@@ -286,8 +312,8 @@ footer{text-align:center;color:#5a5a5a;font-size:12px;letter-spacing:.16em;
 
     <div class="campo" style="margin-top:16px">
       <label class="check"><input type="checkbox" id="ciente">
-        Declaro que as informações são verdadeiras, que já combinei a troca com o colega, e que a
-        troca só vale após a aprovação do supervisor.</label>
+        <span id="txt-ciente">Declaro que as informações são verdadeiras, que já combinei a troca com o colega, e que a
+        troca só vale após a aprovação do supervisor.</span></label>
     </div>
   </div>
 
@@ -297,12 +323,12 @@ footer{text-align:center;color:#5a5a5a;font-size:12px;letter-spacing:.16em;
 
 <div id="tela-ok">
   <div class="ico">✓</div>
-  <h2>Falta a assinatura do colega</h2>
+  <h2 id="ok-titulo">Falta a assinatura do colega</h2>
   <div class="sub">Protocolo</div>
   <div class="proto" id="ok-proto">TRC-0000</div>
   <div class="dica">Guarde este número. Ele identifica sua solicitação.</div>
 
-  <div class="passo-link">
+  <div class="passo-link" id="ok-com">
     <div class="pl-t">Mande este link para <span id="ok-colega">o colega</span></div>
     <div class="pl-url" id="ok-link">—</div>
     <div class="btns" style="margin-top:12px">
@@ -311,6 +337,13 @@ footer{text-align:center;color:#5a5a5a;font-size:12px;letter-spacing:.16em;
     </div>
     <div class="dica" style="margin-top:10px">O colega abre o link, confere os dados, digita o CPF dele e assina.
       Só depois disso a solicitação chega à supervisão para aprovação.</div>
+  </div>
+
+  <div class="passo-link oculto" id="ok-sem">
+    <div class="pl-t">Enviada para a supervisão</div>
+    <div class="dica" style="margin:0 0 12px">Como a troca é sem colega, ela já está no painel aguardando a aprovação
+      do supervisor. Se quiser, avise a supervisão pelo WhatsApp.</div>
+    <a class="btn2 destaque" id="ok-whats-sup" target="_blank" rel="noopener">Avisar a supervisão no WhatsApp</a>
   </div>
 
   <div class="resumo" id="ok-resumo"></div>
@@ -450,6 +483,38 @@ document.querySelectorAll('#g-mod input').forEach(i=>i.addEventListener('change'
 }));
 marcar('g-mod');
 
+// ── período: data por data
+let DATAS = [];
+function renderDatas(){
+  const box = $('listaDatas');
+  if(!DATAS.length){ box.innerHTML = '<span class="vazio-datas">Nenhum dia adicionado ainda.</span>'; return; }
+  box.innerHTML = DATAS.map((d,i)=>`<span class="chip">${br(d)}<button type="button" data-i="${i}" aria-label="Remover ${br(d)}">×</button></span>`).join('');
+  box.querySelectorAll('button').forEach(b=>b.addEventListener('click',()=>{ DATAS.splice(+b.dataset.i,1); renderDatas(); }));
+}
+function addData(){
+  const v = $('novaData').value;
+  if(!v) return false;
+  if(!DATAS.includes(v)){ DATAS.push(v); DATAS.sort(); }
+  $('novaData').value=''; renderDatas(); return true;
+}
+$('btAddData').addEventListener('click', ()=>{ if(!addData()) $('novaData').focus(); });
+$('novaData').addEventListener('keydown', e=>{ if(e.key==='Enter'){ e.preventDefault(); addData(); } });
+renderDatas();
+
+// ── com colega / sem colega
+function semColega(){ const r=document.querySelector('#g-colega input:checked'); return !!r && r.value==='sem'; }
+document.querySelectorAll('#g-colega input').forEach(i=>i.addEventListener('change',()=>{
+  marcar('g-colega');
+  const sem = semColega();
+  $('bloco-colega').classList.toggle('oculto', sem);
+  $('aviso-colega').classList.toggle('oculto', sem);
+  $('txt-ciente').textContent = sem
+    ? 'Declaro que as informações são verdadeiras e que a troca só vale após a aprovação do supervisor.'
+    : 'Declaro que as informações são verdadeiras, que já combinei a troca com o colega, e que a troca só vale após a aprovação do supervisor.';
+  $('btn').textContent = sem ? 'Enviar para a supervisão' : 'Gerar link para o colega assinar';
+}));
+marcar('g-colega');
+
 // ── assinatura
 function padAssinatura(id){
   const c = $(id), ctx = c.getContext('2d');
@@ -505,7 +570,7 @@ $('btn').addEventListener('click', async ()=>{
     cidadeAtual:$('cidadeAtual').value, postoAtual:$('postoAtual').value, turnoAtual:$('turnoAtual').value,
     tipoTroca:tipo?tipo.value:'', modalidade:mod?mod.value:'',
     dataOrigem:$('dataOrigem').value, dataDestino:$('dataDestino').value,
-    periodoInicio:$('periodoInicio').value, periodoFim:$('periodoFim').value,
+    datas:'', periodoInicio:'', periodoFim:'', semColega:semColega(),
     turnoDestino:$('turnoDestino').value,
     cidadeDestino:$('cidadeDestino').value, postoDestino:$('postoDestino').value,
     colegaNome:$('colegaNome').value.trim(), colegaCpf:$('colegaCpf').value.trim(),
@@ -522,8 +587,12 @@ $('btn').addEventListener('click', async ()=>{
   if(!d.postoAtual) return erro('Selecione o seu posto de serviço atual.');
   if(!d.turnoAtual) return erro('Selecione o seu horário atual.');
   if(!d.tipoTroca) return erro('Escolha o que você quer trocar (passo 2).');
-  if(d.modalidade==='Temporária' && (!d.periodoInicio || !d.periodoFim)) return erro('Informe o período da troca temporária.');
-  if(d.periodoInicio && d.periodoFim && d.periodoFim < d.periodoInicio) return erro('O fim do período não pode ser antes do início.');
+  if(d.modalidade==='Temporária'){
+    addData(); // se escolheu a data e esqueceu de tocar em "Adicionar dia"
+    if(!DATAS.length) return erro('Adicione pelo menos um dia em que a troca vale (passo 3).');
+    d.datas = DATAS.join(',');
+    d.periodoInicio = DATAS[0]; d.periodoFim = DATAS[DATAS.length-1];
+  }
   if(d.tipoTroca==='Dia por dia' && (!d.dataOrigem || !d.dataDestino)) return erro('Informe os dois dias da troca (passo 4).');
   if(d.tipoTroca==='Turno por turno' && !d.turnoDestino) return erro('Selecione o horário desejado (passo 4).');
   if(d.tipoTroca==='Turno por turno' && d.turnoDestino===d.turnoAtual) return erro('O horário desejado é igual ao horário atual.');
@@ -531,26 +600,52 @@ $('btn').addEventListener('click', async ()=>{
   if(d.tipoTroca==='Posto por posto' && !d.postoDestino) return erro('Selecione o posto desejado (passo 4).');
   if(d.tipoTroca==='Posto por posto' && d.postoDestino===d.postoAtual && d.cidadeDestino===d.cidadeAtual)
     return erro('O posto desejado é igual ao posto atual.');
-  if(!d.colegaNome) return erro('Informe o nome do colega envolvido.');
-  if(!cpfValido(d.colegaCpf)) return erro('CPF do colega inválido. Confira os números.');
-  if(d.cpf.replace(/\D/g,'')===d.colegaCpf.replace(/\D/g,'')) return erro('O CPF do colega não pode ser igual ao seu.');
-  if(d.colegaTelefone.replace(/\D/g,'').length<10) return erro('Informe o WhatsApp do colega com DDD — é por ele que o link de assinatura vai.');
-  if(!d.colegaCidade) return erro('Selecione a cidade do colega.');
-  if(!d.colegaPosto) return erro('Selecione o posto de serviço do colega.');
+  if(d.semColega){
+    d.colegaNome=''; d.colegaCpf=''; d.colegaTelefone=''; d.colegaCidade=''; d.colegaPosto='';
+  } else {
+    if(!d.colegaNome) return erro('Informe o nome do colega envolvido.');
+    if(!cpfValido(d.colegaCpf)) return erro('CPF do colega inválido. Confira os números.');
+    if(d.cpf.replace(/\D/g,'')===d.colegaCpf.replace(/\D/g,'')) return erro('O CPF do colega não pode ser igual ao seu.');
+    if(d.colegaTelefone.replace(/\D/g,'').length<10) return erro('Informe o WhatsApp do colega com DDD — é por ele que o link de assinatura vai.');
+    if(!d.colegaCidade) return erro('Selecione a cidade do colega.');
+    if(!d.colegaPosto) return erro('Selecione o posto de serviço do colega.');
+  }
   if(d.motivo.length<15) return erro('Descreva o motivo com mais detalhe (mínimo 15 caracteres).');
   if(pads.sig1.vazio()) return erro('Falta a sua assinatura.');
   if(!$('ciente').checked) return erro('Marque a declaração no final do formulário.');
 
   d.assinSolicitante = pads.sig1.dados();
 
-  const btn=$('btn'); btn.disabled=true; btn.textContent='Gerando link...';
+  const btn=$('btn'); const txtBtn=btn.textContent; btn.disabled=true;
+  btn.textContent = d.semColega ? 'Enviando...' : 'Gerando link...';
   try{
     const r = await fetch(API_URL,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify(d)});
     const j = await r.json();
-    if(!j.ok){ btn.disabled=false; btn.textContent='Gerar link para o colega assinar'; return erro(j.erro||'Não foi possível registrar.'); }
+    if(!j.ok){ btn.disabled=false; btn.textContent=txtBtn; return erro(j.erro||'Não foi possível registrar.'); }
 
-    btn.classList.add('ok'); btn.textContent='Link gerado ✓';
+    btn.classList.add('ok'); btn.textContent = d.semColega ? 'Enviado ✓' : 'Link gerado ✓';
     $('ok-proto').textContent = j.protocolo;
+
+    const det = d.tipoTroca==='Dia por dia' ? `${br(d.dataOrigem)} → ${br(d.dataDestino)}`
+              : d.tipoTroca==='Turno por turno' ? `${d.turnoAtual} → ${d.turnoDestino}`
+              : `${d.postoAtual} (${d.cidadeAtual}) → ${d.postoDestino} (${d.cidadeDestino})`;
+    const resumo = (colega, situacao) => [
+      ['Solicitante', d.nome],['Tipo', d.tipoTroca],['Detalhe', det],
+      ['Modalidade', d.modalidade + (d.modalidade==='Temporária' ? ` (${DATAS.map(br).join(', ')})` : '')],
+      ['Colega', colega],['Situação', situacao]
+    ].map(([k,v])=>`<div><b>${k}</b><span>${v}</span></div>`).join('');
+
+    if(d.semColega){
+      $('ok-titulo').textContent = 'Solicitação enviada';
+      $('ok-com').classList.add('oculto');
+      $('ok-sem').classList.remove('oculto');
+      if(j.whatsapp) $('ok-whats-sup').href = j.whatsapp; else $('ok-whats-sup').classList.add('oculto');
+      $('ok-resumo').innerHTML = resumo('Sem colega (troca individual)', 'Aguardando aprovação da supervisão');
+      $('form-area').style.display='none';
+      $('tela-ok').style.display='block';
+      window.scrollTo({top:0,behavior:'smooth'});
+      return;
+    }
 
     const link = new URL('assinar.html', location.href).href + '?t=' + encodeURIComponent(j.token);
     $('ok-link').textContent = link;
@@ -568,20 +663,13 @@ $('btn').addEventListener('click', async ()=>{
       setTimeout(()=>{ b.classList.remove('copiado'); b.textContent='Copiar link'; }, 2500);
     });
 
-    const det = d.tipoTroca==='Dia por dia' ? `${br(d.dataOrigem)} → ${br(d.dataDestino)}`
-              : d.tipoTroca==='Turno por turno' ? `${d.turnoAtual} → ${d.turnoDestino}`
-              : `${d.postoAtual} (${d.cidadeAtual}) → ${d.postoDestino} (${d.cidadeDestino})`;
-    $('ok-resumo').innerHTML = [
-      ['Solicitante', d.nome],['Tipo', d.tipoTroca],['Detalhe', det],
-      ['Modalidade', d.modalidade + (d.modalidade==='Temporária'?` (${br(d.periodoInicio)} a ${br(d.periodoFim)})`:'')],
-      ['Colega', d.colegaNome + ' — ' + d.colegaPosto + ' / ' + d.colegaCidade],
-      ['Situação','Aguardando assinatura do colega']
-    ].map(([k,v])=>`<div><b>${k}</b><span>${v}</span></div>`).join('');
+    $('ok-resumo').innerHTML = resumo(d.colegaNome + ' — ' + d.colegaPosto + ' / ' + d.colegaCidade,
+                                      'Aguardando assinatura do colega');
     $('form-area').style.display='none';
     $('tela-ok').style.display='block';
     window.scrollTo({top:0,behavior:'smooth'});
   }catch(e){
-    btn.disabled=false; btn.textContent='Gerar link para o colega assinar';
+    btn.disabled=false; btn.textContent=txtBtn;
     erro('Falha de conexão. Verifique a internet e tente novamente.');
   }
 });
